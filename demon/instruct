@@ -1,13 +1,13 @@
 1.
-Ê×ÏÈ½øÈë ../sdrconv/ Ö´ĞĞbuild.sh Éú³Ésdrconv¹¤¾ß
+é¦–å…ˆè¿›å…¥ ../sdrconv/ æ‰§è¡Œbuild.sh ç”Ÿæˆsdrconvå·¥å…·
 
 2.
-¿½±´sdrconvµ½±¾µØÄ¿Â¼
+æ‹·è´sdrconvåˆ°æœ¬åœ°ç›®å½•
 
-3.ÓÃsdrconv±àÒëĞ­Òédemon.xmlÎÄ¼ş
-./sdrconv -I demon.xml
-Éú³Édemon.hÍ·ÎÄ¼ş
+3.ç”¨sdrconvç¼–è¯‘åè®®demo.xmlæ–‡ä»¶
+./sdrconv -I demo.xml
+ç”Ÿæˆdemo.hå¤´æ–‡ä»¶
 
 4.
-gcc -g -W -I.. use_demon.c ../sdr.c -o demon
-±àÒëÉú³Édemon
+gcc -g -W -I.. use_demo.c ../sdr.c -o demo
+ç¼–è¯‘ç”Ÿæˆdemo
