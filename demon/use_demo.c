@@ -8,10 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "demon.h"
+#include "demo.h"
 #include "sdr.h"
 
-#define TARGET_BIN "demon.bin"
+#define TARGET_BIN "demo.bin"
 
 int main(int argc , char **argv)
 {
