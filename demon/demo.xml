@@ -7,7 +7,7 @@
 <macro name="VERSION" value="1" />
 <macro name="MAX_NAME_LEN" value="32" />
 
-<!--  属性这种 -->
+<!--  属性 -->
 <struct name="user_info" version="1">
     <entry name="sex" type="int" desc="性别" />
     <entry name="count" type="char" />
@@ -15,7 +15,7 @@
     <entry name="age" type="int" desc="年龄" version="2"/>
 </struct>
 
-<!--  技能吗 -->
+<!--  技能 -->
 <macro name="Q_SKILL" value="1" />
 <macro name="W_SKILL" value="2" />
 <macro name="E_SKILL" value="3" />
