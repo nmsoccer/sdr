@@ -1,0 +1,13 @@
+1.
+首先进入 ../sdrconv/ 执行build.sh 生成sdrconv工具
+
+2.
+拷贝sdrconv到本地目录
+
+3.用sdrconv编译协议demon.xml文件
+./sdrconv -I demon.xml
+生成demon.h头文件
+
+4.
+gcc -g -W -I.. use_demon.c ../sdr.c -o demon
+编译生成demon

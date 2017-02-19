@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf8" ?>
+
+<!--  
+本示例文档定义了一个基本的网络协议 
+-->
+
+<macro name="VERSION" value="100" />
+<macro name="MAX_BODY_LEN" value="32000" desc="最大BODY长度"/>
+
+
+
+<!--
+<struct name="PkgHead" version="1">
+         <entry name="magic" type="int"/>
+         <entry name="version" type="uchar" />
+         <entry name="cmd" type="long" count="10"/>
+         <entry name="man" type="avman" version="13" />
+         <entry name="bodylen" type="char" count="MAX_BODY_LEN" refer="magic"/>    
+</struct>
+-->
+
+<macro name="MAX_NAME_LEN" value="32" />
+<macro name="MAX_PASS_LEN" value="32" />
+<struct name="CmdLogin" version="10" >
+         <entry name="name" type="char" count="MAX_NAME_LEN" />
+         <entry name="pass" type="char" count="MAX_PASS_LEN" />
+</struct>
+
+ 
+<macro name="CMD_LOGIN" value="0" />
+<macro name="CMD_LOGOUT" value="1" />
+<macro name="MAX_ATTR_SIZE" value="128" />
+<struct name="CmdLogout" version="10" >
+         <entry name="reason" type="int" />
+         <entry name="attr" type="short" count="MAX_ATTR_SIZE" />
+</struct>
+
+<union name="PkgBody" >
+         <entry name="login" type="CmdLogin" id="CMD_LOGIN" />
+         <entry name="logout" type="CmdLogout" id="CMD_LOGOUT" />
+</union>
+<struct name="avman" version="1">
+    <entry name="type" type="char" desc="类型" version="1" />
+    <entry name="data" type="PkgBody" desc="内容" version="1" select="type"/>
+    <entry name="testinfo" type="CmdLogin" count="5" />
+</struct> 
+
+
+    
+<!--a
+<struct version="1">
+    <entry name="sex" type="char" desc="性别" version="1" />
+    <entry name="age" type="int" desc="年龄" version="1" />
+</struct>
+-->
