@@ -17,11 +17,15 @@ int main(int argc , char **argv)
 {
 	sdr_data_res_t *pres;
 	char buff[1024] = {0};
+	char tmp_buff[MAX_NAME_LEN] = {0};
+	char next_name[MAX_NAME_LEN] = {0};
 
 	user_info_t user_info;
 	skill_list_t skill_list;
 	skill_list_t skill_list_unpacked;
 
+	int ivalue;
+	char *str;
 
 	//1.
 	pres = sdr_load_bin(TARGET_BIN , NULL);
@@ -56,7 +60,36 @@ int main(int argc , char **argv)
 		printf("qskill is:%d , useless:%d , skillcount:%d,"
 				"name:%s\n" , skill_list_unpacked.info_list[1].data.qskill , skill_list_unpacked.useless , skill_list_unpacked.skill_count , skill_list_unpacked.name);
 
-	//3.free
+	//4.test get member
+	printf("skill_list member offsset: skill_count:%d,useless:%d,name:%d,info_list:%d\n" , sdr_member_offset(pres , "skill_list" , "skill_count") ,
+			sdr_member_offset(pres , "skill_list" , "useless"), sdr_member_offset(pres , "skill_list" , "name"),sdr_member_offset(pres , "skill_list" , "info_list"));
+
+	ivalue = sdr_member_offset(pres , "skill_list" , "name");
+	str = ((char *)&skill_list_unpacked)+ivalue;
+	printf("get name:%s\n" , str);
+
+	//5. test iterater
+	printf("iterate user_Info member:\n");
+	tmp_buff[0] = 0;
+	next_name[0] = 0;
+	ivalue = sdr_next_member(pres , "user_info" , NULL , next_name , sizeof(next_name));
+	while(1)
+	{
+		//get member
+		if(ivalue<0)
+			break;
+
+		//printf member and offset
+		printf("member:%s, offset:%d\n" , next_name , ivalue);
+
+		//get next
+		tmp_buff[0] = 0;
+		strncpy(tmp_buff , next_name , sizeof(tmp_buff));
+		next_name[0] = 0;
+		ivalue = sdr_next_member(pres , "user_info" , tmp_buff , next_name , sizeof(next_name));
+	}
+
+	//6.free
 	sdr_free_bin(pres);
 
 	return 0;

@@ -29,6 +29,8 @@ static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff
 static int get_sym_map_index(sdr_data_res_t *pres , char *sym_name);
 static int get_base_type_size(char type);
 static int print_info(char type , FILE *fp , char *fmt , ...);
+static sdr_node_t *fetch_node_by_index(sdr_data_res_t *pres , int iIndex);
+static sdr_node_t *fetch_node_entry_of_type(sdr_data_res_t *pres , char *type_name , char *member_name , int *perr_code);
 
 /************GLOBAL FUNCTION*/
 /*
@@ -402,6 +404,110 @@ _unpack_end:
 }
 
 
+/*
+ * 获得某成员相对父结构之偏移[打包前或者解包后之正常结构]只能是结构体
+ * @type_name:结构体名
+ * @member_name:成员名
+ * @return
+ * >=0:偏移量
+ * -1:参数错误
+ * -2:找不到结构
+ * -3:类型错误非结构体
+ * -4:找不到成员
+ * -5:成员错误
+*/
+int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name)
+{
+	sdr_node_t *pnode = NULL;
+	int iValue = -1;
+
+	/***Arg Check*/
+	if(!pres || !type_name || !member_name)
+		return -1;
+
+	if(strlen(type_name)<=0 || strlen(member_name)<=0)
+		return -1;
+
+	/***Handle*/
+	pnode = fetch_node_entry_of_type(pres , type_name , member_name , &iValue);
+	if(!pnode)
+		return iValue;
+	else
+		return pnode->data.entry_value.offset;
+}
+
+/*
+ * 获得某结构体当前成员的下一个成员名
+ * @type_name:结构体名
+ * @curr_member:当前成员名;如果为空则next_member是查找第一个成员
+ * @next_member:基于curr_member的下一个成员名
+ * @len:缓冲区长度
+ * @return:
+ * >=0:下一个成员在该结构内之偏移
+ * -1:参数错误
+ * -2:没有type_name
+ * -3:type_name类型错误:只能是结构体
+ * -4:curr_member未找到
+ * -5:curr_member成员错误
+ * -6:len长度不够
+ * -7:没有下一个成员
+ * -8:下一个成员错误
+ */
+int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member , char *next_member , int len)
+{
+	sdr_node_t *pmain_node = NULL;
+	sdr_node_t *pnode = NULL;
+	int iIndex = 0;
+	int iValue = -1;
+
+	/***Arg Check*/
+	if(!pres || !type_name || !next_member || len<=0)
+		return- 1;
+
+
+	/***Handle*/
+	//1.curr_member为空 则寻找第一个成员
+	if(curr_member == NULL)
+	{
+		//1.1找主节点
+		iIndex = get_sym_map_index(pres , type_name);
+		pmain_node = fetch_node_by_index(pres , iIndex);
+		if(!pmain_node)
+			return -2;
+
+		if(pmain_node->class != SDR_CLASS_STRUCT)
+			return -3;
+
+		//1.2.获得目标节点
+		pnode = fetch_node_by_index(pres , pmain_node->data.struct_value.child_idx);
+	}
+	//2.curr_member不为空
+	else
+	{
+		//1.获取curr_member的node
+		pnode = fetch_node_entry_of_type(pres , type_name , curr_member , &iValue);
+		if(pnode == NULL)
+			return iValue;
+
+		//2.获取目标节点
+		pnode = fetch_node_by_index(pres , pnode->sibling_idx);
+	}
+
+	if(!pnode)
+		return -7;
+
+	//成员类型非ENTRY
+	if(pnode->class != SDR_CLASS_ENTRY)
+		return -8;
+
+	//缓冲区长度不够
+	if(len <= strlen(pnode->node_name))
+		return -6;
+
+	//拷贝
+	strncpy(next_member , pnode->node_name , len);
+	return pnode->data.entry_value.offset;
+}
 
 
 static int print_info(char type , FILE *fp , char *fmt , ...)
@@ -758,7 +864,7 @@ static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_i
 	int i;
 
 	/***Arg Check*/
-	if(!pres || !pnode || !pin || !pout || version<0 || select<0)
+	if(!pres || !pnode || !pout || !pin || version<0 || select<0)
 		return -1;
 
 	//不是union
@@ -1168,6 +1274,110 @@ static int get_base_type_size(char type)
 	}
 
 	return size;
+}
+
+/*
+ * 根据偏移获取对应的node
+ *@return:
+ *NULL:FAILED
+ *ELSE:SUCCESS
+ */
+static sdr_node_t *fetch_node_by_index(sdr_data_res_t *pres , int iIndex)
+{
+	sdr_node_t *pnode = NULL;
+
+	/***Arg Check*/
+	if(!pres || iIndex<=0 || iIndex>=pres->pnode_map->count)
+		return NULL;
+
+	pnode = &pres->pnode_map->node_list[iIndex];
+	if(pnode->my_idx != iIndex)
+		return NULL;
+
+	return pnode;
+}
+
+/*
+ * 获取某结构之成员node
+ * @type_name:类型名[仅限于结构]
+ * @member_name[成员名]
+ * @err_code:错误码
+ * 0:成功
+ * -1:参数错误
+ * -2:找不到结构
+ * -3:类型错误非结构体
+ * -4:找不到成员
+ * -5:成员错误
+ *@return:
+ *NULL:FAILED
+ *ELSE:SUCCESS
+ */
+static sdr_node_t *fetch_node_entry_of_type(sdr_data_res_t *pres , char *type_name , char *member_name , int *perr_code)
+{
+	sdr_node_t *pmain_node = NULL;
+	sdr_node_t *pnode = NULL;
+	int iIndex = -1;
+
+	/***Arg Check*/
+	if(!perr_code)
+		return NULL;
+
+	if(!pres || !type_name || !member_name)
+	{
+		*perr_code = -1;
+		return NULL;
+	}
+
+	if(strlen(type_name)<=0 || strlen(member_name)<=0)
+	{
+		*perr_code = -1;
+		return NULL;
+	}
+	/***Handle*/
+	//1.获取主节点
+	iIndex = get_sym_map_index(pres , type_name);
+	pmain_node = fetch_node_by_index(pres , iIndex);
+	if(!pmain_node)
+	{
+		*perr_code = -2;
+		return NULL;
+	}
+
+	if(pmain_node->class != SDR_CLASS_STRUCT)
+	{
+		*perr_code = -3;
+		return NULL;
+	}
+
+	//2.查找
+	pnode = fetch_node_by_index(pres , pmain_node->data.struct_value.child_idx);
+	while(1)
+	{
+		//指针判定
+		if(pnode == NULL)
+		{
+			*perr_code = -4;
+			break;
+		}
+
+		//是否ENTRY
+		if(pnode->class != SDR_CLASS_ENTRY)
+		{
+			*perr_code = -5;
+			break;
+		}
+
+		//找到
+		if(strcmp(pnode->node_name , member_name) == 0)
+		{
+			*perr_code = 0;
+			return pnode;
+		}
+		//没找到则继续查找下一成员
+		pnode = fetch_node_by_index(pres , pnode->sibling_idx);
+	}
+
+	return NULL;
 }
 
 

@@ -597,7 +597,7 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 	}
 
 	//3.写入node_map
-	pstart = pres->pnode_map;
+	pstart = (char *)pres->pnode_map;
 	size = sizeof(sdr_node_map_t) + pres->pnode_map->count*sizeof(sdr_node_t);
 	ret = write(penv->out_fd , pstart , size);
 	if(ret <= 0)
@@ -607,7 +607,7 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 	}
 
 	//4.写入sym_table
-	pstart = pres->psym_table;
+	pstart = (char *)pres->psym_table;
 	size = sizeof(sym_table_t) + pres->max_node*sizeof(sym_entry_t);
 	ret = write(penv->out_fd , pstart , size);
 	if(ret <= 0)
@@ -750,6 +750,7 @@ sdr_node_t *get_node(sdr_conv_env_t *penv)
 	pnode = (sdr_node_t *)&penv->pnode_map->node_list[penv->pnode_map->count];
 	memset(pnode , 0 , sizeof(sdr_node_t));
 	pnode->my_idx = penv->pnode_map->count;
+	//pnode->sibling_idx = -1;	//这里要注意
 
 	penv->pnode_map->count++;
 	return pnode;
@@ -850,7 +851,7 @@ int sdr_print_info(sdr_conv_env_t *penv , char type , ...)
 
 /*
  * 将一个主节点名字存储在sym_table哈希表中
- * @sym_name:节点名
+ * @sym_name:主节点名
  * @index:节点index
  * @return:
  * 0:成功
