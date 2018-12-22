@@ -196,15 +196,15 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     src_user.gold = 5000;
     src_user.money = 1289;
     src_user.sex = 1;
-    src_user.name_len = strlen("cs_fuck_suomei");
-    strncpy(src_user.user_name , "cs_fuck_suomei" , sizeof(src_user.user_name));
+    src_user.name_len = strlen("cs_f**k_suomei");
+    strncpy(src_user.user_name , "cs_f**k_suomei" , sizeof(src_user.user_name));
 
     src_user.skill.skill_count = 2;
     src_user.skill.info_list[0].type = Q_SKILL;
     src_user.skill.info_list[0].data.qskill = 111;
 
     src_user.skill.info_list[1].type = E_SKILL;
-    strncpy(src_user.skill.info_list[1].data.eskill , "fuck" , sizeof(src_user.skill.info_list[1].data.eskill));
+    strncpy(src_user.skill.info_list[1].data.eskill , "wear" , sizeof(src_user.skill.info_list[1].data.eskill));
 
     printf("1) orignal==========================\n\n");
     print_user_info(&src_user);
@@ -253,11 +253,11 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
   - 执行结果如下：
     1. 首先初始化src_user和dst_user并打印(虚线上面是src_user 下面是dst_user)：
     ```
-    sex:1 name:cs_fuck_suomei age:32 money:1289 gold:5000
+    sex:1 name:cs_f**k_suomei age:32 money:1289 gold:5000
     skill<0> type:1
     qskill:111
     skill<1> type:3
-    eskill:fuck
+    eskill:wear
     -------------------------------
     sex:0 name: age:0 money:0 gold:0
     ```
@@ -278,11 +278,11 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     unpack 'user_info' success! 34->469
     sdr_unpack len:469
     -------------------------------
-    sex:1 name:cs_fuck_suomei age:32 money:0 gold:0
+    sex:1 name:cs_f**k_suomei age:32 money:0 gold:0
     skill<0> type:1
     qskill:111
     skill<1> type:3
-    eskill:fuck
+    eskill:wear
     ```
     可以看到操作成功，但是由于money(versio=2),gold(version=3)高于序列化版本version=1,所以不会被序列化到二进制数据里.虚线下打印的是成功反序列     化的dst_user数据,money=0,gold=0是默认值
       
@@ -295,11 +295,11 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     unpack 'user_info' success! 42->469
     sdr_unpack len:469
     -------------------------------
-    sex:1 name:cs_fuck_suomei age:32 money:1289 gold:0
+    sex:1 name:cs_f**k_suomei age:32 money:1289 gold:0
     skill<0> type:1
     qskill:111
     skill<1> type:3
-    eskill:fuck
+    eskill:wear
     ```
     可以看出相比version=1，这次将money(version=2)也成功序列化，并且序列化后的字节数相比3.多个了8个字节，这个就是money成员。但gold仍未操作，因为其version=3.
     
@@ -312,14 +312,44 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     unpack 'user_info' success! 50->469
     sdr_unpack len:469
     -------------------------------
-    sex:1 name:cs_fuck_suomei age:32 money:1289 gold:5000
+    sex:1 name:cs_f**k_suomei age:32 money:1289 gold:5000
     skill<0> type:1
     qskill:111
     skill<1> type:3
-    eskill:fuck
+    eskill:wear
     ```
     可以看到gold字段得到了处理,序列化后的数据又增加了8字节
     
-to be continue...
-best whishes!
-1222
+## 性能
+### 说明
+protobuf-c是googole protobuffer的C实现，所以这里主要针对protobuf-C做一个性能对比评估.测试之前已先安装好相关库.  
+probobuf-c地址:https://github.com/protobuf-c/protobuf-c
+
+- **测试平台**: linux-3.10.104 x86_64 24核15G
+- **测试结构**: 分别制定bag.proto与bag.xml协议文件，双方结构基本保持一致.背包结构里存放item_info结构，上限1024，实存128
+- **测试流程**: 分别使用protobuf-c与sdr编写的程序对bag结构进行序列&反序列化各100万次，检查耗时和内存消耗
+
+### 序列化
+
+  | 库        |   耗时(秒)   |   CPU   |   内存       | 成功率 |
+  |:---------:| :---------: | :------:|:------------:|:------:|
+  |protobuf-c |    6.37     |  99%    |  max:936K    |  100%  |
+  |sdr        |    12.46    |  98%    |  max:2292K   |  100%  |
+  
+### 反序列化
+
+  | 库        |   耗时(秒)   |   CPU   |   内存       | 成功率 |
+  |:---------:| :---------: | :------:|:------------:|:------:|
+  |protobuf-c |    24.55     |  98%    |  max:928K    |  100%  |
+  |sdr        |    12.87     |  99%    |  max:2272K   |  100%  |
+
+### 总结
+- protobuf-c在序列化数据上性能更高，基本达到sdr一倍
+- protobuf-c在反序列化数据时性能不如sdr，基本只为sdr的1/2
+- protobuf-c适用于序列化数据频次非常高的场合，适用于写频率较高的场景，比如频繁的保存数据
+- sdr 在序列&反序列化上性能较为均衡基本一致，适用于读频率较高的场景，比如频繁的登录查询
+- 在内存占用上，由于protobuf-c是动态分配数据，所以占用内存较少；sdr是静态分配内存，所以内存占用率由结构体大小提前决定
+- 在使用便捷上，个人认为probuf-c必须对每一个结构的子结构进行动态分配和释放，可用性较低，尤其对于较复杂结构使用的复杂性非常高，基本不能维护. sdr则由于静态分配内存省却了必须跟踪每一个子结构体的分配释放烦恼，提高了开发效率
+- 所有测试文件均可在目录下找到
+
+
