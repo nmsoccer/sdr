@@ -125,7 +125,8 @@ sdrconv用于生成与解析*.sdr协议描述文件
 2. 在demo目录下执行sdrconv -I demo.xml 如果成功执行将会生成demo.h
 3. gcc -g demo.c -lsdr -o demo 生成可执行文件
 _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后执行/sbin/ldconfig_
-
+4. 或者直接将源文件编译  
+   gcc -g demo.c ../sdr.c -o demo
 
 
 ## API
