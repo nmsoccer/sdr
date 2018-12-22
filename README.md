@@ -155,6 +155,9 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
   * log_fp    应用程序传入的日志句柄 or NULL
   * return    成功则返回反序列化之后的数据长度; 失败返回-1
 
+- ```int sdr_free_bin(sdr_data_res_t *pres);```  
+  * 释放生成的*.sdr协议描述文件
+
 ## 版本兼容
 ### 约束
 - 序列化数据结构时，所有数据结构中version大于传入版本号的成员将不会处理
