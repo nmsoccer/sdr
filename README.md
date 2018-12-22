@@ -55,6 +55,7 @@ _协议数据通过xml文件进行定义，为了解析与协议的规范性，�
     <entry name="age" type="short" desc="年龄" />
     <entry name="skill" type="skill_list" desc="技能列表" />
     <entry name="money" type="long long" version="2" desc="金币" />
+    <entry name="gold" type="ulong" version="3" desc="金币" />
 </struct>
 
 ```
@@ -155,17 +156,25 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
 
 ## 版本兼容
 ### 约束
-- 如果xml里的结构未指定version 则该结构version为最低值0
-- 已有字段不应重新设置version,已有version的字段不能修改version值
-- 原有结构体内新增的字段需要添加version属性，且属性值需要高于该结构最近一次序列化所使用的版本号
-- 序列化结构时所使用的协议号最好要>=该结构及成员version的最大值。序列化时version高于参数version的字段将不会序列化
-- 反序列化二进制数据时，目标结构version>二进制携带versio的字段将不会得到解析,从而新字段得到保留
+- 序列化数据结构时，所有数据结构中version大于传入版本号的成员将不会处理
+- 反序列化二进制数据时，目标结构version大于二进制versio的字段将不会处理
 
-### 举例
+### 细则
+- xml定义的结构若未指定version 则该结构version默认为最低值0
+- 序列化输入的版本号必须>=目标结构定义时设置的版本号(如果不显示设置则为0)
+- 结构&联合体一经定义，不应重新设置version
+- 结构&联合体内已有字段不应重新设置version
+- 结构&联合体内新增字段需要添加version属性，且属性值应高于该数据结构最近一次序列化所使用的版本号
+
+
+### 实例
 - 假设当前对某结构体user_info进行version=2的序列化操作，那么user_info里version>2的成员将不会序列化
 - 修改结构体user_info 新增成员entry(注意 成员只能增不能减)
 - 现在对user_info新加成员version=3,然后将原有version=2的序列化数据进行反序列化，则version=3的成员使用默认值，其他<=2的成员会成功赋值
 - 后面只需要按照version=3进行序列化即可
+
+### 代码
+- 我们使用上面的xml来定义一个user_info结构，并根据不同的协议号对其打解包
 
 to be continue...
 best whishes!
