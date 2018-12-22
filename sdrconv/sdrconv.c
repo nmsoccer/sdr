@@ -58,10 +58,10 @@ int main(int argc , char **argv)
 			sdr_conv_env.debug_info = 1;
 			break;
 		case 'I':
-			strncpy(sdr_conv_env.input_name , optarg , MAX_NAME_LEN);
+			strncpy(sdr_conv_env.input_name , optarg , SDR_NAME_LEN);
 			break;
 		case 'O':
-			strncpy(sdr_conv_env.output_name , optarg , MAX_NAME_LEN);
+			strncpy(sdr_conv_env.output_name , optarg , SDR_NAME_LEN);
 			break;
 		case 'h':
 		default:
@@ -99,10 +99,10 @@ int main(int argc , char **argv)
 			sdr_conv_env.output_name[i] = sdr_conv_env.input_name[i];
 		}
 
-		//add .bin
-		if(strlen(sdr_conv_env.output_name)+1+4 <= MAX_NAME_LEN)
+		//add .sdr
+		if(strlen(sdr_conv_env.output_name)+1+4 <= SDR_NAME_LEN)
 		{
-			strcat(sdr_conv_env.output_name , ".bin");
+			strcat(sdr_conv_env.output_name , ".sdr");
 		}
 
 		sdr_conv_env.output_name[strlen(sdr_conv_env.output_name)] = 0;
@@ -116,7 +116,7 @@ int main(int argc , char **argv)
 		return -1;
 	}
 
-	penv->out_fd = open(penv->output_name , O_RDWR|O_CREAT|O_TRUNC , S_IRWXU|S_IRWXG|S_IROTH);
+	penv->out_fd = open(penv->output_name , O_RDWR|O_CREAT|O_TRUNC , 0644);
 	if(penv->out_fd < 0)
 	{
 		printf("Open %s Failed!\n" , penv->output_name);
@@ -315,10 +315,10 @@ static void sdr_show_help(void)
 {
 	printf("-v \t show version\n");
 	printf("-d \t show debug info\n");
-	printf("-R \t reverse bin to xml\n");
-	printf("-s xx\t specify node number when conversing!\n");
-	printf("-I input.xml\t specify iuput file\n");
-	printf("-O output.bin\t specify output file\n");
+	printf("-R \t reverse xx.sdr to xxx.sdr.xml\n");
+	printf("-s xx\t specify node number when conversing! if memory not enough\n");
+	printf("-I <input file>\t specify iuput file\n");
+	printf("-O <output file>\t specify output file\n");
 	printf("-h \t display help info\n");
 }
 

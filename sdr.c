@@ -552,7 +552,7 @@ static int gen_struct_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 {
 	int ret;
 	sdr_node_t *pentry_node = NULL;
-	char line_buff[MAX_LINE_LEN] = {0};
+	char line_buff[SDR_LINE_LEN] = {0};
 
 	/***Arg Check*/
 	if(!pres || !pnode || !fp)
@@ -565,9 +565,9 @@ static int gen_struct_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 
 	//2.version
 	if(pnode->version > 0)
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%d\" >\n" , XML_LABEL_VERSION , pnode->version);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%d\" >\n" , XML_LABEL_VERSION , pnode->version);
 	else
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , ">\n");
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , ">\n");
 
 	fprintf(fp , "%s" , line_buff);
 
@@ -605,7 +605,7 @@ static int gen_union_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 {
 	int ret;
 	sdr_node_t *pentry_node = NULL;
-	char line_buff[MAX_LINE_LEN] = {0};
+	char line_buff[SDR_LINE_LEN] = {0};
 
 	/***Arg Check*/
 	if(!pres || !pnode || !fp)
@@ -618,9 +618,9 @@ static int gen_union_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 
 	//2.version
 		if(pnode->version > 0)
-			snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%d\" >\n" , XML_LABEL_VERSION , pnode->version);
+			snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%d\" >\n" , XML_LABEL_VERSION , pnode->version);
 		else
-			snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , ">\n");
+			snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , ">\n");
 
 	fprintf(fp , "%s" , line_buff);
 	//2.依次打印其成员
@@ -657,7 +657,7 @@ static int gen_entry_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 {
 	char *start = NULL;
 	sdr_node_t *pnode_tmp;
-	char line_buff[MAX_LINE_LEN] = {0};
+	char line_buff[SDR_LINE_LEN] = {0};
 
 	/***Arg Check*/
 	if(!pres|| !pnode || !fp)
@@ -670,13 +670,13 @@ static int gen_entry_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 	strncpy(line_buff , "\t<entry " , sizeof(line_buff));
 
 	//1.name
-	snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_NAME , pnode->node_name);
+	snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_NAME , pnode->node_name);
 
 	//2.type name
 	if(pnode->data.entry_value.entry_type==SDR_T_STRUCT || pnode->data.entry_value.entry_type==SDR_T_UNION)	//复合类型
 	{
 		pnode_tmp = (sdr_node_t *)&pres->pnode_map->node_list[pnode->data.entry_value.type_idx];
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_TYPE , pnode_tmp->node_name);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_TYPE , pnode_tmp->node_name);
 	}
 	else //基本类型
 	{
@@ -687,41 +687,41 @@ static int gen_entry_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 			return -1;
 		}
 
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_TYPE , start);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_TYPE , start);
 	}
 
 	//3.count;
 	if(pnode->data.entry_value.count==0 || pnode->data.entry_value.count>1)
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_COUNT , pnode->data.entry_value.count_name);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_COUNT , pnode->data.entry_value.count_name);
 
 	//4.version
 	if(pnode->version > 0)
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%d\" " , XML_LABEL_VERSION , pnode->version);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%d\" " , XML_LABEL_VERSION , pnode->version);
 
 	//5.refer
 	if(pnode->data.entry_value.refer_idx > 0)
 	{
 		pnode_tmp = (sdr_node_t *)&pres->pnode_map->node_list[pnode->data.entry_value.refer_idx];
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_REFER , pnode_tmp->node_name);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_REFER , pnode_tmp->node_name);
 	}
 
 	//6.select
 	if(pnode->data.entry_value.select_idx > 0)
 	{
 		pnode_tmp = (sdr_node_t *)&pres->pnode_map->node_list[pnode->data.entry_value.select_idx];
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_SELECT , pnode_tmp->node_name);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_SELECT , pnode_tmp->node_name);
 	}
 
 	//7.select_id
 	if(strlen(pnode->data.entry_value.id_name) > 0)
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_ID , pnode->data.entry_value.id_name);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_ID , pnode->data.entry_value.id_name);
 
 	//8.desc
 	if(strlen(pnode->node_desc) > 0)
-		snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_DESC , pnode->node_desc);
+		snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , "%s=\"%s\" " , XML_LABEL_DESC , pnode->node_desc);
 
 	/***结尾*/
-	snprintf(&line_buff[strlen(line_buff)] , MAX_LINE_LEN-strlen(line_buff) , " />");
+	snprintf(&line_buff[strlen(line_buff)] , SDR_LINE_LEN-strlen(line_buff) , " />");
 	fprintf(fp , "%s\n" , line_buff);
 	fflush(fp);
 	return 0;
@@ -801,7 +801,7 @@ static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_
 		for(i=0; i<refer_count; i++)
 		{
 			//普通类型，则直接计算即可
-			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_DOUBLE)
+			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
 				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
 				pin->index += pentry_node->size;
@@ -925,7 +925,7 @@ static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_i
 		for(i=0; i<pentry_node->data.entry_value.count; i++)
 		{
 			//普通类型，则直接计算即可
-			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_DOUBLE)
+			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
 				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
 				pin->index += pentry_node->size;
@@ -1030,7 +1030,7 @@ static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buf
 		for(i=0; i<refer_count; i++)
 		{
 			//普通类型，则直接计算即可
-			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_DOUBLE)
+			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
 				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
 				pin->index += pentry_node->size;
@@ -1160,7 +1160,7 @@ static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff
 		for(i=0; i<pentry_node->data.entry_value.count; i++)
 		{
 			//普通类型，则直接计算即可
-			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_DOUBLE)
+			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
 				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
 				pin->index += pentry_node->size;
@@ -1241,7 +1241,7 @@ static int get_base_type_size(char type)
 
 	int size = -1;
 
-	if(type<SDR_T_CHAR || type>SDR_T_DOUBLE)
+	if(type<SDR_T_CHAR || type>SDR_T_MAX)
 		return -1;
 
 	switch(type)
@@ -1267,6 +1267,9 @@ static int get_base_type_size(char type)
 		break;
 	case SDR_T_DOUBLE:
 		size = sizeof(double);
+		break;
+	case SDR_T_LONGLONG:
+		size = sizeof(long long);
 		break;
 	default:
 		size = -1;
@@ -1388,10 +1391,10 @@ static sdr_node_t *fetch_node_entry_of_type(sdr_data_res_t *pres , char *type_na
  */
 char *reverse_label_type(char sdr_type)
 {
-	static char str_type[MAX_NAME_LEN] = {0};
+	static char str_type[SDR_NAME_LEN] = {0};
 
 	/***Arg Check*/
-	if(sdr_type<SDR_T_CHAR || sdr_type>SDR_T_DOUBLE)
+	if(sdr_type<SDR_T_CHAR || sdr_type>SDR_T_MAX)
 		return NULL;
 
 	/***Handle*/
@@ -1427,6 +1430,9 @@ char *reverse_label_type(char sdr_type)
 			break;
 		case SDR_T_DOUBLE:
 			strncpy(str_type , "double" , sizeof(str_type));
+			break;
+		case SDR_T_LONGLONG:
+			strncpy(str_type , "long long" , sizeof(str_type));
 			break;
 		default:
 			return NULL;

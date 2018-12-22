@@ -101,7 +101,7 @@ sdr_node_t *sdr_parse_macro(sdr_conv_env_t *penv)
 	sdr_node_t *pnode = NULL;
 	char place;
 	int index;
-	char attr_value[MAX_DESC_LEN] = {0};
+	char attr_value[SDR_DESC_LEN] = {0};
 	int ret;
 	char *start;
 
@@ -185,7 +185,7 @@ sdr_node_t *sdr_parse_struct(sdr_conv_env_t *penv)
 	sdr_node_t *pnode_now_entry = NULL;
 	char place;
 	int index;
-	char attr_value[MAX_DESC_LEN] = {0};
+	char attr_value[SDR_DESC_LEN] = {0};
 	int ret;
 	char *start;
 	int size = 0;
@@ -330,7 +330,7 @@ sdr_node_t *sdr_parse_union(sdr_conv_env_t *penv)
 	sdr_node_t *pnode_now_entry = NULL;
 	char place;
 	int index;
-	char attr_value[MAX_DESC_LEN] = {0};
+	char attr_value[SDR_DESC_LEN] = {0};
 	int ret;
 	char *start;
 	int size = 0;
@@ -471,8 +471,8 @@ int sdr_gen_h(sdr_conv_env_t *penv)
 {
 	sdr_node_t *pnode;
 	FILE *fp = NULL;
-	char file_name[MAX_NAME_LEN];
-	char buff[MAX_LINE_LEN] = {0};
+	char file_name[SDR_NAME_LEN];
+	char buff[SDR_LINE_LEN] = {0};
 	char *start;
 	int i;
 	int ret;
@@ -507,11 +507,14 @@ int sdr_gen_h(sdr_conv_env_t *penv)
 	/*打印时间*/
 	timep = time(NULL);
 	ptm = localtime(&timep);
-	fprintf(fp , "/*\n*Created by sdrconv\n*@%d-%d-%d %d:%d:%d\n*/\n\n" , ptm->tm_year+1900 , ptm->tm_mon+1 , ptm->tm_mday , ptm->tm_hour ,
+	fprintf(fp , "/*\n*Created by sdrconv\n--%d-%d-%d %d:%d:%d\nContact:https://github.com/nmsoccer\n*/\n\n" ,
+	        ptm->tm_year+1900 , ptm->tm_mon+1 , ptm->tm_mday , ptm->tm_hour ,
 			ptm->tm_min , ptm->tm_sec);
 
 	//3.写入文件头
 	fprintf(fp , "#ifndef _%s_h\n#define _%s_h\n\n" , file_name , file_name);
+    fprintf(fp , "#ifdef __cplusplus\nextern \"C {\"\n#endif\n\n");
+    
 
 	//4.按序输出每个主节点的内容
 	for(i=0; i<penv->pnode_map->count; i++)
@@ -555,6 +558,7 @@ int sdr_gen_h(sdr_conv_env_t *penv)
 
 
 	//.结束字串
+	fprintf(fp , "#ifdef __cplusplus\n}\n#endif\n\n");
 	fprintf(fp , "#endif\n");
 	fflush(fp);
 	fclose(fp);
@@ -660,7 +664,7 @@ int sdr_reverse_bin(sdr_conv_env_t *penv)
  */
 int forward_miss_char(char *src , char miss)
 {
-	char buff[MAX_LINE_LEN] = {0};
+	char buff[SDR_LINE_LEN] = {0};
 	int i;
 
 	/***Arg Check*/
@@ -683,9 +687,9 @@ int forward_miss_char(char *src , char miss)
 		return 0;
 
 	//将i之后的字符替换到src
-	strncpy(buff , &src[i] , MAX_LINE_LEN);
+	strncpy(buff , &src[i] , SDR_LINE_LEN);
 	memset(src , 0 , strlen(src));
-	strncpy(src , buff , MAX_LINE_LEN);
+	strncpy(src , buff , SDR_LINE_LEN);
 	return 0;
 }
 
@@ -698,7 +702,7 @@ int forward_miss_char(char *src , char miss)
  */
 int forward_to_char(char *src , char target)
 {
-	char buff[MAX_LINE_LEN] = {0};
+	char buff[SDR_LINE_LEN] = {0};
 	int i;
 
 	/***Arg Check*/
@@ -721,9 +725,9 @@ int forward_to_char(char *src , char target)
 		return 0;
 
 	//将i之后的字符替换到src
-	strncpy(buff , &src[i] , MAX_LINE_LEN);
+	strncpy(buff , &src[i] , SDR_LINE_LEN);
 	memset(src , 0 , strlen(src));
-	strncpy(src , buff , MAX_LINE_LEN);
+	strncpy(src , buff , SDR_LINE_LEN);
 	return 0;
 }
 
@@ -765,7 +769,7 @@ sdr_node_t *get_node(sdr_conv_env_t *penv)
  */
 int read_one_line(sdr_conv_env_t *penv)
 {
-	char buff[MAX_LINE_LEN] = {0};
+	char buff[SDR_LINE_LEN] = {0};
 	/***Arg Check*/
 	if(!penv)
 		return -1;
@@ -775,8 +779,8 @@ int read_one_line(sdr_conv_env_t *penv)
 	{
 		memset(penv->src_line , 0 , sizeof(penv->src_line));
 		memset(penv->working_line , 0 , strlen(penv->working_line));
-		strncpy(penv->src_line , buff , MAX_LINE_LEN);
-		strncpy(penv->working_line , buff , MAX_LINE_LEN);
+		strncpy(penv->src_line , buff , SDR_LINE_LEN);
+		strncpy(penv->working_line , buff , SDR_LINE_LEN);
 		penv->curr_line++;
 		return 0;
 	}
@@ -794,7 +798,7 @@ int read_one_line(sdr_conv_env_t *penv)
  */
 int copy_str(char *dest , char *src)
 {
-	char buff[MAX_LINE_LEN] = {0};
+	char buff[SDR_LINE_LEN] = {0};
 
 	/***Arg Check*/
 	if(!dest || !src)
@@ -897,7 +901,7 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 	if(penv->psym_table->entry_list[pos].index <= 0)
 	{
 		penv->psym_table->entry_list[pos].index = index;
-		strncpy(penv->psym_table->entry_list[pos].sym_name , sym_name , MAX_NAME_LEN);
+		strncpy(penv->psym_table->entry_list[pos].sym_name , sym_name , SDR_NAME_LEN);
 		penv->psym_table->count++;
 		return 0;
 	}
@@ -908,7 +912,7 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 		if(penv->psym_table->entry_list[i].index <= 0)
 		{
 			penv->psym_table->entry_list[i].index = index;
-			strncpy(penv->psym_table->entry_list[i].sym_name , sym_name , MAX_NAME_LEN);
+			strncpy(penv->psym_table->entry_list[i].sym_name , sym_name , SDR_NAME_LEN);
 			penv->psym_table->count++;
 			return 0;
 		}
@@ -965,7 +969,7 @@ static sdr_node_t *sdr_parse_entry(sdr_conv_env_t *penv , sdr_node_t *pparent)
 	sdr_node_t *pnode_tmp = NULL;
 	char place;
 	int index;
-	char attr_value[MAX_DESC_LEN] = {0};
+	char attr_value[SDR_DESC_LEN] = {0};
 	int ret;
 	char *start;
 
@@ -1145,7 +1149,7 @@ static sdr_node_t *sdr_parse_entry(sdr_conv_env_t *penv , sdr_node_t *pparent)
 			return NULL;
 		}
 		pnode->data.entry_value.select_id = atoi(start);
-		strncpy(pnode->data.entry_value.id_name , attr_value , MAX_NAME_LEN);
+		strncpy(pnode->data.entry_value.id_name , attr_value , SDR_NAME_LEN);
 	}
 
 	//version
@@ -1193,15 +1197,15 @@ static int fetch_attr_value(sdr_conv_env_t *penv , char *src , char *attr_name ,
 	char *start;
 	char *end;
 
-	char buff[MAX_LINE_LEN] = {0};
-	char format_buff[MAX_LINE_LEN] = {0};
+	char buff[SDR_LINE_LEN] = {0};
+	char format_buff[SDR_LINE_LEN] = {0};
 	/***Arg Check*/
 	if(!src || !attr_name || !attr_value)
 		return -1;
 	if(strlen(src)<=0 || strlen(attr_name)<=0)
 		return -1;
 
-	strncpy(buff , src , MAX_LINE_LEN);
+	strncpy(buff , src , SDR_LINE_LEN);
 	/***Handle*/
 	do
 	{
@@ -1232,7 +1236,7 @@ static int fetch_attr_value(sdr_conv_env_t *penv , char *src , char *attr_name ,
 		end[0] = 0;
 
 		//拷贝
-		strncpy(attr_value , &start[1] , MAX_NAME_LEN);
+		strncpy(attr_value , &start[1] , SDR_NAME_LEN);
 		break;
 	}while(1);
 
@@ -1313,6 +1317,12 @@ static int converse_label_type(char *label_type , int *size)
 		{
 			type = SDR_T_DOUBLE;
 			*size = sizeof(double);
+			break;
+		}
+		if(strcmp(label_type , XML_LABEL_LONGLONG) == 0)
+	   {
+			type = SDR_T_LONGLONG;
+			*size = sizeof(long long);
 			break;
 		}
 

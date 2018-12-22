@@ -1,13 +1,10 @@
 1.
-首先进入 ../sdrconv/ 执行build.sh 生成sdrconv工具
+首先在sdr主目录执行./install.sh 安装相关库及程序
 
-2.
-拷贝sdrconv到本地目录
 
-3.用sdrconv编译协议demo.xml文件
-./sdrconv -I demo.xml
+2.用sdrconv编译协议demo.xml文件
+sdrconv -I demo.xml
 生成demo.h头文件
 
-4.
-gcc -g -W -I.. use_demo.c ../sdr.c -o demo
-编译生成demo
+3.编译
+./make.sh

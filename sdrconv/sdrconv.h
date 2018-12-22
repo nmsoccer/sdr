@@ -23,8 +23,8 @@ struct _sdr_conv_env
 {
 	char is_reverse;	//0:xml->bin 1:bin->xml
 	int max_node;	//最多节点
-	char input_name[MAX_NAME_LEN];
-	char output_name[MAX_NAME_LEN];
+	char input_name[SDR_NAME_LEN];
+	char output_name[SDR_NAME_LEN];
 
 	/*符号表*/
 	sym_table_t *psym_table;
@@ -35,8 +35,8 @@ struct _sdr_conv_env
 	/*Input*/
 	FILE *in_fp;
 	int curr_line;
-	char src_line[MAX_LINE_LEN];	//读入的行
-	char working_line[MAX_LINE_LEN];	//工作的行
+	char src_line[SDR_LINE_LEN];	//读入的行
+	char working_line[SDR_LINE_LEN];	//工作的行
 
 	/*Output*/
 	sdr_data_res_t sdr_res;	//输出结构

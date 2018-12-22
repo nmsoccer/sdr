@@ -8,31 +8,33 @@
 #ifndef SDR_TYPES_H_
 #define SDR_TYPES_H_
 
-/************************ºê****************/
-enum SDR_BASE_CLASS	//XMLÎÄµµ»ù±¾½Úµã.Ö÷½ÚµãÊÇ¹¹³ÉXMLµÚÒ»²ã´ÎµÄ½Úµã£¬²»°üº¬SDR_CLASS_ENTRY
+/************************å®****************/
+enum SDR_BASE_CLASS	//XMLæ–‡æ¡£åŸºæœ¬èŠ‚ç‚¹.ä¸»èŠ‚ç‚¹æ˜¯æ„æˆXMLç¬¬ä¸€å±‚æ¬¡çš„èŠ‚ç‚¹ï¼Œä¸åŒ…å«SDR_CLASS_ENTRY
 {
-	SDR_CLASS_START,	//ÆğÊ¼
-	SDR_CLASS_MACRO,	//ºê³£Á¿
-	SDR_CLASS_STRUCT,	//½á¹¹Ìå
-	SDR_CLASS_UNION,	//ÁªºÏ
-	SDR_CLASS_ENTRY		//½á¹¹/ÁªºÏ³ÉÔ±
+	SDR_CLASS_START,	//èµ·å§‹
+	SDR_CLASS_MACRO,	//å®å¸¸é‡
+	SDR_CLASS_STRUCT,	//ç»“æ„ä½“
+	SDR_CLASS_UNION,	//è”åˆ
+	SDR_CLASS_ENTRY		//ç»“æ„/è”åˆæˆå‘˜
 };
 
-enum SDR_TYPE	//Êı¾İÀàĞÍ
+enum SDR_TYPE	//æ•°æ®ç±»å‹
 {
-	SDR_T_UNION = 1,	//ÁªºÏ
-	SDR_T_STRUCT,	//½á¹¹Ìå
-	SDR_T_COMPOS,	//Õ¼Î»¸´ºÏÀàĞÍ
-	SDR_T_CHAR,	//×Ö·û
-	SDR_T_UCHAR, //ÎŞ·ûºÅ×Ö·û
-	SDR_T_SHORT,	//¶ÌÕûĞÎ
-	SDR_T_USHORT,	//ÎŞ·ûºÅ
-	SDR_T_INT,	//ÕûĞÎ
-	SDR_T_UINT,	//ÎŞ·ûºÅÕûĞÎ
-	SDR_T_LONG,	//³¤ÕûĞÎ
-	SDR_T_ULONG,	//ÎŞ·ûºÅ³¤ÕûĞÎ
-	SDR_T_FLOAT,	//¸¡µã
-	SDR_T_DOUBLE	//Ë«¾«¶È¸¡µã
+	SDR_T_UNION = 1,	//è”åˆ
+	SDR_T_STRUCT,	//ç»“æ„ä½“
+	SDR_T_COMPOS,	//å ä½å¤åˆç±»å‹
+	SDR_T_CHAR,	//å­—ç¬¦
+	SDR_T_UCHAR, //æ— ç¬¦å·å­—ç¬¦
+	SDR_T_SHORT,	//çŸ­æ•´å½¢
+	SDR_T_USHORT,	//æ— ç¬¦å·
+	SDR_T_INT,	//æ•´å½¢
+	SDR_T_UINT,	//æ— ç¬¦å·æ•´å½¢
+	SDR_T_LONG,	//é•¿æ•´å½¢
+	SDR_T_ULONG,	//æ— ç¬¦å·é•¿æ•´å½¢
+	SDR_T_FLOAT,	//æµ®ç‚¹
+	SDR_T_DOUBLE, //åŒç²¾åº¦æµ®ç‚¹
+	SDR_T_LONGLONG, //é•¿é•¿æ•´å‹
+	SDR_T_MAX = SDR_T_LONGLONG //max
 };
 
 #define XML_LEFT_BRACKET '<'
@@ -51,7 +53,7 @@ enum SDR_TYPE	//Êı¾İÀàĞÍ
 #define XML_LABEL_VERSION "version"
 #define XML_LABEL_DESC "desc"
 
-//ÀàĞÍ¹Ø¼ü×Ö
+//ç±»å‹å…³é”®å­—
 #define XML_LABEL_CHAR "char"
 #define XML_LABEL_UCHAR "uchar"
 #define XML_LABEL_SHORT "short"
@@ -62,62 +64,62 @@ enum SDR_TYPE	//Êı¾İÀàĞÍ
 #define XML_LABEL_ULONG "ulong"
 #define XML_LABEL_FLOAT "float"
 #define XML_LABEL_DOUBLE "double"
+#define XML_LABEL_LONGLONG "long long"
 
-
-#define MAX_NAME_LEN	32	//Ãû×Ö³¤¶È
-#define MAX_DESC_LEN	64	//×¢ÊÍ³¤¶È
-#define MAX_LINE_LEN 1024	 //ĞĞ³¤¶È
-#define MACRO_VALUE_LEN 32	//MACRO Öµ³¤¶È
+#define SDR_NAME_LEN	64	//åå­—é•¿åº¦
+#define SDR_DESC_LEN	64	//æ³¨é‡Šé•¿åº¦
+#define SDR_LINE_LEN 1024	 //è¡Œé•¿åº¦
+#define MACRO_VALUE_LEN 64	//MACRO å€¼é•¿åº¦
 
 #define INFO_NORMAL	1
 #define INFO_MAIN	2
 #define INFO_ERR	3
-/************************½á¹¹****************/
+/************************ç»“æ„****************/
 /*
- * Ò»¸öÀàĞÍµÄ½Úµã
+ * ä¸€ä¸ªç±»å‹çš„èŠ‚ç‚¹
  */
 struct _sdr_node
 {
-	char class;	//»ù±¾½ÚµãÀàĞÍ
-	int my_idx;	//¸Ã½ÚµãËùÔÚmapÖĞµÄĞòºÅ
-	int version;	//°æ±¾ºÅ
-	int size;	//×Ö½Ú³¤¶È
-	char node_name[MAX_NAME_LEN];
-	char node_desc[MAX_DESC_LEN];
-	int sibling_idx;	//ĞÖµÜ½Úµã
+	char class;	//åŸºæœ¬èŠ‚ç‚¹ç±»å‹
+	int my_idx;	//è¯¥èŠ‚ç‚¹æ‰€åœ¨mapä¸­çš„åºå·
+	int version;	//ç‰ˆæœ¬å·
+	int size;	//å­—èŠ‚é•¿åº¦
+	char node_name[SDR_NAME_LEN];
+	char node_desc[SDR_DESC_LEN];
+	int sibling_idx;	//å…„å¼ŸèŠ‚ç‚¹
 	union
 	{
 		char macro_value[MACRO_VALUE_LEN];	//SDR_MACRO
 		struct	//SDR_STRUCT
 		{
-			int child_idx;	//µÚÒ»¸öentryµÄindex
+			int child_idx;	//ç¬¬ä¸€ä¸ªentryçš„index
 		}struct_value;
 
 		struct	//SDR_UNION
 		{
-			int child_idx;	//µÚÒ»¸öentryµÄindex
+			int child_idx;	//ç¬¬ä¸€ä¸ªentryçš„index
 		}union_value;
 
 		struct	//SDR_ENTRY
 		{
-			char entry_type;	//entryµÄÀàĞÍ
-			int type_idx;	//Èç¹ûÊÇ¸´ºÏÀàĞÍ(struct/union)Æä¶ÔÓ¦µÄ½ÚµãID
-			int count;	//ÊıÄ¿:Èç¹û1ÔòÊÇÆÕÍ¨ÀàĞÍ >1Êı×é
-			char count_name[MAX_NAME_LEN];	//Èç¹ûÊÇºê£¬ÔòºêÃû·Åµ½ÕâÀï
-			int refer_idx;	//Èç¹ûÊÇÊı×é£¬ĞèÒª²Î¿¼µÄ±äÁ¿
-			int select_idx;	//Èç¹ûentryÀàĞÍÊÇunion£¬Ôò¸Ã±ê¼ÇÓ¦¸Ã»á¼ÇÂ¼ÉèÖÃÆä¾ßÌåIDµÄÄ³³ÉÔ±
-			int select_id;	//Èç¹ûÊÇunionµÄ³ÉÔ±£¬Ôò¼ÇÂ¼ÆäID
-			char id_name[MAX_NAME_LEN];	//idµÄÃû×Ö
-			int offset;	//¸ÃentryÏà¶ÔÓÚ¸¸½á¹¹µÄÆ«ÒÆ
+			char entry_type;	//entryçš„ç±»å‹
+			int type_idx;	//å¦‚æœæ˜¯å¤åˆç±»å‹(struct/union)å…¶å¯¹åº”çš„èŠ‚ç‚¹ID
+			int count;	//æ•°ç›®:å¦‚æœ1åˆ™æ˜¯æ™®é€šç±»å‹ >1æ•°ç»„
+			char count_name[SDR_NAME_LEN];	//å¦‚æœæ˜¯å®ï¼Œåˆ™å®åæ”¾åˆ°è¿™é‡Œ
+			int refer_idx;	//å¦‚æœæ˜¯æ•°ç»„ï¼Œéœ€è¦å‚è€ƒçš„å˜é‡
+			int select_idx;	//å¦‚æœentryç±»å‹æ˜¯unionï¼Œåˆ™è¯¥æ ‡è®°åº”è¯¥ä¼šè®°å½•è®¾ç½®å…¶å…·ä½“IDçš„æŸæˆå‘˜
+			int select_id;	//å¦‚æœæ˜¯unionçš„æˆå‘˜ï¼Œåˆ™è®°å½•å…¶ID
+			char id_name[SDR_NAME_LEN];	//idçš„åå­—
+			int offset;	//è¯¥entryç›¸å¯¹äºçˆ¶ç»“æ„çš„åç§»
 		}entry_value;
 	}data;
 }__attribute__((packed));
 typedef struct _sdr_node sdr_node_t;
 
-#define DEFAULT_MAX_NODE_COUNT (10*1024)	//Ä¬ÈÏNODE ÊıÄ¿
+#define DEFAULT_MAX_NODE_COUNT (20*1024)	//é»˜è®¤NODE 20Kæ•°ç›®
 /*
- * MEM<->FILE MAP ÓÃÓÚ¼ÇÂ¼ËùÓĞ½ÚµãµÄÊı¾İ½á¹¹£¬Í¬Ê±Ò²¿É³Ö¾Ã»¯µ½BINÎÄ¼şÖĞ
- * Ë³Ğò´æ´¢
+ * MEM<->FILE MAP ç”¨äºè®°å½•æ‰€æœ‰èŠ‚ç‚¹çš„æ•°æ®ç»“æ„ï¼ŒåŒæ—¶ä¹Ÿå¯æŒä¹…åŒ–åˆ°BINæ–‡ä»¶ä¸­
+ * é¡ºåºå­˜å‚¨
  */
 struct _sdr_node_map
 {
@@ -127,10 +129,10 @@ struct _sdr_node_map
 typedef struct _sdr_node_map sdr_node_map_t;
 
 
-/***·ûºÅ±í(Ö»´æ·ÅSDR_MACRO SDR_STRUCT ºÍ SDR_UNION ²»´æ·ÅSDR_ENTRY³ÉÔ±Ãû)*/
+/***ç¬¦å·è¡¨(åªå­˜æ”¾SDR_MACRO SDR_STRUCT å’Œ SDR_UNION ä¸å­˜æ”¾SDR_ENTRYæˆå‘˜å)*/
 struct _sym_entry
 {
-	char sym_name[MAX_NAME_LEN];
+	char sym_name[SDR_NAME_LEN];
 	int index;		//index of node table
 }__attribute__((packed));
 typedef struct _sym_entry sym_entry_t;
@@ -143,7 +145,7 @@ struct _sym_table
 typedef struct _sym_table sym_table_t;
 
 
-/***³Ö¾Ã»¯½á¹¹*/
+/***æŒä¹…åŒ–ç»“æ„*/
 #define SDR_MAGIC_STR	"!sdr"
 
 struct _sdr_data_res
@@ -155,12 +157,12 @@ struct _sdr_data_res
 }__attribute__((packed));
 typedef struct _sdr_data_res sdr_data_res_t;
 
-/***´ò°ü½â°üINFO*/
+/***æ‰“åŒ…è§£åŒ…INFO*/
 struct _sdr_buff_info
 {
 	char *src;
 	int index;
-	int length;	//½â°üĞèÒª
+	int length;	//è§£åŒ…éœ€è¦
 };
 typedef struct _sdr_buff_info sdr_buff_info_t;
 

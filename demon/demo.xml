@@ -4,27 +4,18 @@
  -->
 
 <!--  VERSION -->
-<macro name="VERSION" value="1" />
-<macro name="MAX_NAME_LEN" value="32" />
+<macro name="PROTO_VERSION" value="1" />
 
-<!--  属性这种 -->
-<struct name="user_info" version="1">
-    <entry name="sex" type="int" desc="性别" />
-    <entry name="count" type="char" />
-    <entry name="user_name" type="char" count="MAX_NAME_LEN" refer="count" desc="姓名"/>
-    <entry name="age" type="int" desc="年龄" version="2"/>
-</struct>
-
-<!--  技能吗 -->
+<!--  技能 -->
 <macro name="Q_SKILL" value="1" />
 <macro name="W_SKILL" value="2" />
 <macro name="E_SKILL" value="3" />
 <macro name="R_SKILL" value="4" />
 <union name="skill_data" >
     <entry name="qskill" type="char" id="Q_SKILL" />
-    <entry name="wskill" type="int" id="W_SKILL" />
-    <entry name="eskill" type="char" id="E_SKILL" count="12"/>
-    <entry name="rskill" type="user_info" id="R_SKILL" />
+    <entry name="wskill" type="uint" id="W_SKILL" />
+    <entry name="eskill" type="uchar" id="E_SKILL" count="12"/>
+    <entry name="rskill" type="short" id="R_SKILL" />
 </union>
 <struct name="skill_info">
     <entry name="type" type="char" />
@@ -32,9 +23,20 @@
 </struct>
 
 <!-- 技能列表 -->
+<macro name="MAX_SKILL_COUNT" value="32" />
 <struct name="skill_list">    
-    <entry name="skill_count" type="char" />
-    <entry name="useless" type="int" version="10" />
-    <entry name="name" type="char" count="MAX_NAME_LEN" desc="姓名" />
-    <entry name="info_list" type="skill_info" count="5" refer="skill_count" />    
+    <entry name="skill_count" type="char" />        
+    <entry name="info_list" type="skill_info" count="MAX_SKILL_COUNT" refer="skill_count" />    
+</struct>
+
+<!--  玩家信息 -->
+<macro name="MAX_NAME_LEN" value="32" />
+<struct name="user_info" version="1">
+    <entry name="sex" type="char" desc="性别" />
+    <entry name="name_len" type="char" />
+    <entry name="user_name" type="char" count="MAX_NAME_LEN" refer="name_len" desc="姓名"/>
+    <entry name="age" type="short" desc="年龄" />
+    <entry name="skill" type="skill_list" desc="技能列表" />
+    <entry name="money" type="long long" version="2" desc="金钱" />
+    <entry name="gold" type="ulong" version="3" desc="金币" />
 </struct>
