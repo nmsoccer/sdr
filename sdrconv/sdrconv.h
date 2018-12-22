@@ -8,6 +8,10 @@
 #ifndef SDRCONV_H_
 #define SDRCONV_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sdr.h"
 
 
@@ -65,5 +69,9 @@ extern int copy_str(char *dest , char *src);
 extern int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index);
 extern int fetch_sym_map_index(sdr_conv_env_t *penv , char *sym_name);
 extern int sdr_print_info(sdr_conv_env_t *penv , char type , ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SDRCONV_H_ */

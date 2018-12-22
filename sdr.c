@@ -138,7 +138,7 @@ sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 }
 
 /*
- * 释放加载入内存的bin文件
+ * 释放加载入内存的sdr文件
  */
 int sdr_free_bin(sdr_data_res_t *pres)
 {

@@ -8,6 +8,10 @@
 #ifndef SDR_TYPES_H_
 #define SDR_TYPES_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /************************宏****************/
 enum SDR_BASE_CLASS	//XML文档基本节点.主节点是构成XML第一层次的节点，不包含SDR_CLASS_ENTRY
 {
@@ -165,5 +169,9 @@ struct _sdr_buff_info
 	int length;	//解包需要
 };
 typedef struct _sdr_buff_info sdr_buff_info_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SDR_TYPES_H_ */
