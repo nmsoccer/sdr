@@ -130,6 +130,7 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
 
 
 ## API
+### 基本
 - ```sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp);```
   * 加载由sdrconv生成的*.sdr协议描述文件
   * file_name 通过sdrconv生成的*.sdr协议描述文件
@@ -156,7 +157,23 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
   * return    成功则返回反序列化之后的数据长度; 失败返回-1
 
 - ```int sdr_free_bin(sdr_data_res_t *pres);```  
-  * 释放生成的*.sdr协议描述文件
+  * 释放生成的*.sdr协议描述文件  
+  
+### 扩展
+- ```int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name);```  
+  * 获得一个结构内成员相对父结构的偏移
+  * type_name 结构名
+  * member_name 成员名
+  * return >=0 偏移量; -1 失败
+  
+- ```int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member , char *next_member , int len);```
+  * 获得当前结构体成员的下一个成员名
+  * type_name 结构名
+  * curr_member 当前成员名(NULL则为第一个)
+  * next_member 返回的下一个成员名地址
+  * len 下一个成员名缓冲区长度
+  * return >=0 下个成员之偏移 -1:错误 -2:无下一个成员
+
 
 ## 版本兼容
 ### 约束
