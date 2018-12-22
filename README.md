@@ -168,14 +168,158 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
 
 
 ### 实例
-- 假设当前对某结构体user_info进行version=2的序列化操作，那么user_info里version>2的成员将不会序列化
+- 假设当前对某结构体user_info进行version=1的序列化操作，那么user_info里version>1的成员将不会序列化
 - 修改结构体user_info 新增成员entry(注意 成员只能增不能减)
-- 现在对user_info新加成员version=3,然后将原有version=2的序列化数据进行反序列化，则version=3的成员使用默认值，其他<=2的成员会成功赋值
-- 后面只需要按照version=3进行序列化即可
+- 现在对user_info新加成员version=2,然后将原有version=1的序列化数据进行反序列化，则version=2的成员不受影响，其他<=1的成员会成功赋值
+- 后面只需要按照version=2进行序列化即可
 
 ### 代码
-- 我们使用上面的xml来定义一个user_info结构，并根据不同的协议号对其打解包
+- 我们使用上面的xml来定义一个user_info结构，并设置其version=1, 然后再代码里使用这个结构，并根据不同的协议号对其打解包
+- user_info里有两个成员,money version=2; gold version=3
+- 我们依次从version=0到3对user_info进行序列反序列化，观察这两个成员变化
+- 代码如下所示(源文件见压缩包)
+  ```
+  int main(int argc , char **argv)
+  {
+  
+	 sdr_data_res_t *pres;
+	 char buff[MAX_BUFF_LEN] = {0};
+	   user_info_t src_user;
+    user_info_t dst_user;
+    int len = 0;
+    int version = -1;
+    //init
+	   memset(&src_user , 0 , sizeof(src_user));
+	   memset(&dst_user , 0 , sizeof(dst_user));
 
+    src_user.age = 32;
+    src_user.gold = 5000;
+    src_user.money = 1289;
+    src_user.sex = 1;
+    src_user.name_len = strlen("cs_fuck_suomei");
+    strncpy(src_user.user_name , "cs_fuck_suomei" , sizeof(src_user.user_name));
+
+    src_user.skill.skill_count = 2;
+    src_user.skill.info_list[0].type = Q_SKILL;
+    src_user.skill.info_list[0].data.qskill = 111;
+
+    src_user.skill.info_list[1].type = E_SKILL;
+    strncpy(src_user.skill.info_list[1].data.eskill , "fuck" , sizeof(src_user.skill.info_list[1].data.eskill));
+
+    printf("1) orignal==========================\n\n");
+    print_user_info(&src_user);
+    print_user_info(&dst_user);
+
+    //sdr
+    pres = sdr_load_bin(SDR_PROTO_FILE , NULL);
+    if(!pres)
+    {
+    	printf("load %s failed!\n" , SDR_PROTO_FILE);
+    	return -1;
+    }
+
+    while(version<3)
+    {
+    	version++;
+    	printf("\n\nversion [%d] ==========================\n" , version);
+
+    	//pack
+    	len = sdr_pack(pres , buff , (char *)&src_user , "user_info" , version , NULL);
+    	if(len < 0)
+    	{
+    		printf("sdr_pack failed!\n");
+    		continue;
+    	}
+    	printf("sdr_pack len:%d\n" , len);
+
+    	//unpack
+    	len = sdr_unpack(pres , (char *)&dst_user , buff , "user_info" , NULL);
+    	if(len < 0)
+    	{
+    		printf("sdr_unpack failed!\n");
+    		return -1;
+    	}
+    	printf("sdr_unpack len:%d\n" , len);
+    	print_user_info(&dst_user);
+    }
+
+    //free
+    sdr_free_bin(pres);
+    return 0;
+  }
+  ```
+  - 代码定义两个user_info结构，src_user和dst_user. src_user用于序列化，dst_user用来接收每次反序列化结果
+  - print_user_info函数用来打印uesr_info的成员变量
+  - 执行结果如下：
+    1. 首先初始化src_user和dst_user并打印(虚线上面是src_user 下面是dst_user)：
+    ```
+    sex:1 name:cs_fuck_suomei age:32 money:1289 gold:5000
+    skill<0> type:1
+    qskill:111
+    skill<1> type:3
+    eskill:fuck
+    -------------------------------
+    sex:0 name: age:0 money:0 gold:0
+    ```
+    2. 用version=0对src_user序列化
+    ```
+    version [0] ==========================
+    Error:sdr pack Failed! type 'user_info' version=1 is larger than curr version.0
+    sdr_pack failed!
+    ```
+      序列化失败，原因在于user_info的version=1，高于输入版本号
+    
+    3. 用version=1对src_user序列化并反序列化到dst_user
+    ```
+    version [1] ==========================
+    pack 'user_info' success! 469 -> 34
+    sdr_pack len:42
+    ready to unpack 'user_info', version:1,length:34
+    unpack 'user_info' success! 34->469
+    sdr_unpack len:469
+    -------------------------------
+    sex:1 name:cs_fuck_suomei age:32 money:0 gold:0
+    skill<0> type:1
+    qskill:111
+    skill<1> type:3
+    eskill:fuck
+    ```
+    可以看到操作成功，但是由于money(versio=2),gold(version=3)高于序列化版本version=1,所以不会被序列化到二进制数据里.虚线下打印的是成功反序列     化的dst_user数据,money=0,gold=0是默认值
+      
+    4. 用version=2来再次相同操作:
+    ```
+    version [2] ==========================
+    pack 'user_info' success! 469 -> 42
+    sdr_pack len:50
+    ready to unpack 'user_info', version:2,length:42
+    unpack 'user_info' success! 42->469
+    sdr_unpack len:469
+    -------------------------------
+    sex:1 name:cs_fuck_suomei age:32 money:1289 gold:0
+    skill<0> type:1
+    qskill:111
+    skill<1> type:3
+    eskill:fuck
+    ```
+    可以看出相比version=1，这次将money(version=2)也成功序列化，并且序列化后的字节数相比3.多个了8个字节，这个就是money成员。但gold仍未操作，因为其version=3.
+    
+    5. 用version=3继续：
+    ```
+    version [3] ==========================
+    pack 'user_info' success! 469 -> 50
+    sdr_pack len:58
+    ready to unpack 'user_info', version:3,length:50
+    unpack 'user_info' success! 50->469
+    sdr_unpack len:469
+    -------------------------------
+    sex:1 name:cs_fuck_suomei age:32 money:1289 gold:5000
+    skill<0> type:1
+    qskill:111
+    skill<1> type:3
+    eskill:fuck
+    ```
+    可以看到gold字段得到了处理,序列化后的数据又增加了8字节
+    
 to be continue...
 best whishes!
 1222
