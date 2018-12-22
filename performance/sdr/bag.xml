@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf8" ?>
+
+<macro name="MAX_NAME_LEN" value="32" />
+<macro name="MAX_ITEM_INFO" value="1024" />
+<struct name="basic_attr">
+  <entry name="money" type="uint" desc="money"/>
+  <entry name="gold" type="uint" />
+  <entry name="diamond" type="uint" />
+  <entry name="exp" type="uint" />
+  <entry name="name" type="char" count="MAX_NAME_LEN" />
+</struct>
+
+<struct name="item_info">
+  <entry name="res_id" type="uint" />
+  <entry name="instid" type="long" />
+  <entry name="count" type="int" />
+  <entry name="grid" type="int" />
+</struct>
+
+<struct name="item_list">
+  <entry name="type" type="int" />
+  <entry name="count" type="int" desc="item count"/>
+  <entry name="list" type="item_info" refer="count" count="MAX_ITEM_INFO" />
+</struct>
+
+<struct name="bag_all">
+  <entry name="attr" type="basic_attr" />
+  <entry name="expend_items" type="item_list" />
+</struct>
