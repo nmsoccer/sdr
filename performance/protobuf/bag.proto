@@ -1,0 +1,28 @@
+syntax = "proto2";
+//package bag.test;
+
+message basic_attr {
+  required uint32 money = 1;
+  required uint32 gold = 2;
+  required uint32 diamond = 3;
+  required uint32 exp = 4;
+  optional string name = 5;
+}
+
+message item_info {
+  required uint32 res_id = 1;
+  required uint64 instid = 2;
+  required sint32 count = 3;
+  required sint32 grid = 4;
+}
+
+message item_list {
+  required sint32 type = 1;
+  repeated item_info list = 2;
+}
+
+
+message bag_all {
+  required basic_attr attr = 1;
+  required item_list expend_items = 2;
+}
