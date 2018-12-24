@@ -343,7 +343,7 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     
 ## 性能
 ### 说明
-protobuffer是google的数据序列&反序列化的开源解决方案 https://github.com/protocolbuffers/protobuf 支持多种语言(不支持C).这里使用C++
+protobuffer是google的数据序列&反序列化的开源解决方案 https://github.com/protocolbuffers/protobuf 支持多种语言(不支持C).这里使用C++  
 protobuf-c是googole protobuffer的C实现 https://github.com/protobuf-c/protobuf-c  
 
 - **测试平台**: linux-3.10.104 x86_64 Intel(R) Xeon(R) CPU E5-2620 v3 @ 2.40GHz 24核15G
