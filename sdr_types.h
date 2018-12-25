@@ -148,6 +148,21 @@ struct _sym_table
 }__attribute__((packed));
 typedef struct _sym_table sym_table_t;
 
+//这是放入文件里的符号表，根据内存里的符号表紧缩排列，减小sdr尺寸
+struct _packed_sym_entry
+{
+	int pos;	// pos of sym_table.entry_list[];
+	sym_entry_t entry;
+}__attribute__((packed));
+typedef struct _packed_sym_entry packed_sym_entry_t;
+
+struct _packed_sym_table
+{
+	int sym_list_size;   // size of sym_table.entry_list
+	int my_list_size; //size of this.entry_list
+	packed_sym_entry_t entry_list[0];
+}__attribute__((packed));
+typedef struct _packed_sym_table packed_sym_table_t;
 
 /***持久化结构*/
 #define SDR_MAGIC_STR	"!sdr"

@@ -13,9 +13,10 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <time.h>
-
+#include <errno.h>
 #include "sdr.h"
 
+extern int errno;
 /************LOCAL FUNCTION*/
 static int gen_struct_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp);
 static int gen_union_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp);
@@ -31,26 +32,40 @@ static int get_base_type_size(char type);
 static int print_info(char type , FILE *fp , char *fmt , ...);
 static sdr_node_t *fetch_node_by_index(sdr_data_res_t *pres , int iIndex);
 static sdr_node_t *fetch_node_entry_of_type(sdr_data_res_t *pres , char *type_name , char *member_name , int *perr_code);
+static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym);
 
 /************GLOBAL FUNCTION*/
 /*
  * 加载目标bin文件入内存
  */
+#define SDR_LOAD_BIN_FAIL  \
+	do \
+    {  \
+		close(fd); \
+		sdr_free_bin(pres); \
+		return NULL; \
+	}while(0)
+
 sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 {
 	int fd;
 	sdr_data_res_t *pres = NULL;
-	char *start;
+	sdr_node_map_t *pmap = NULL;
+	sym_table_t *psym = NULL;
+	packed_sym_table_t *ppacked_sym = NULL;
+	char *pstart = NULL;
 	char buff[32] = {0};
-	int max_node;
-	int map_count;
+	int max_node = 0;
+	int map_count = 0;
+	int sym_list_size = 0;
+	int my_list_size = 0;
 	int size;
 	int ret;
 
 	/***Arg Check*/
 	if(!file_name || strlen(file_name)<=0)
 	{
-		print_info(INFO_ERR , log_fp , "File name is empty!");
+		print_info(INFO_ERR , log_fp , "<%s> failed! File name is empty!" , __FUNCTION__);
 		return NULL;
 	}
 
@@ -59,54 +74,145 @@ sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 	fd = open(file_name , O_RDONLY , S_IRUSR);
 	if(fd < 0)
 	{
-		print_info(INFO_ERR , log_fp , "Can not Open file %s" , file_name);
+		print_info(INFO_ERR , log_fp , "<%s> failed! Can not Open file %s" , __FUNCTION__ , file_name);
 		return NULL;
 	}
 
-	//2.读入magic+maxnode
+	//2.读入magic+maxnode+malloc
 	ret = read(fd , buff , strlen(SDR_MAGIC_STR));
 	if(ret < 0)
 	{
-		print_info(INFO_ERR , log_fp , "Read Magic Failed!");
-		return NULL;
+		print_info(INFO_ERR , log_fp , "<%s> failed! Read Magic Failed!" , __FUNCTION__);
+		SDR_LOAD_BIN_FAIL;
 	}
 	if(strcmp(buff , SDR_MAGIC_STR) != 0)
 	{
-		print_info(INFO_ERR , log_fp , "Not a regular sdr bin file!");
-		return NULL;
+		print_info(INFO_ERR , log_fp , "<%s> failed! Not a regular sdr bin file!" , __FUNCTION__);
+		SDR_LOAD_BIN_FAIL;
 	}
 
 	ret = read(fd , &max_node , sizeof(max_node));
 	if(ret < 0)
 	{
-		print_info(INFO_ERR , log_fp , "Read Max node Failed!");
-		return NULL;
+		print_info(INFO_ERR , log_fp , "<%s> failed! Read Max node Failed!" , __FUNCTION__);
+		SDR_LOAD_BIN_FAIL;
 	}
 	if(max_node <= 0)
 	{
-		print_info(INFO_ERR , log_fp , "max node <= 0");
-		return NULL;
+		print_info(INFO_ERR , log_fp , "<%s> failed! max node <= 0" , __FUNCTION__);
+		SDR_LOAD_BIN_FAIL;
 	}
 
-	//3.读入sdr_nod_map
+		//2.1malloc
+	pres = (sdr_data_res_t *)calloc(1 , sizeof(sdr_data_res_t));
+	if(!pres)
+	{
+		print_info(INFO_ERR , log_fp , "<%s> failed! calloc sdr_data_res_t failed! err:%s" , __FUNCTION__ , strerror(errno));
+		SDR_LOAD_BIN_FAIL;
+	}
+	pres->max_node = max_node;
+	strncpy(pres->magic , SDR_MAGIC_STR , sizeof(pres->magic));
+
+	//3.读入sdr_nod_map 并分配内存
 	memset(buff , 0 , strlen(buff));
 	ret = read(fd , buff , sizeof(sdr_node_map_t));
-	if(ret < 0)
+	if(ret != sizeof(sdr_node_map_t))
 	{
 		print_info(INFO_ERR , log_fp , "Read sdr node map Failed!");
-		return NULL;
+		SDR_LOAD_BIN_FAIL;
 	}
 	map_count = ((sdr_node_map_t *)buff)->count;
 	if(map_count <= 0)
 	{
 		print_info(INFO_ERR , log_fp , "map count <= 0");
-		return NULL;
+		SDR_LOAD_BIN_FAIL;
 	}
 
+		//3.1malloc
+	pmap = (sdr_node_map_t *)calloc(1 , (sizeof(sdr_node_map_t) + map_count*sizeof(sdr_node_t)));
+	if(!pmap)
+	{
+		print_info(INFO_ERR , log_fp , "<%s> fail! calloc sdr_node_map failed!" , __FUNCTION__);
+		SDR_LOAD_BIN_FAIL;
+	}
+	pmap->count = map_count;
+	pres->pnode_map = pmap;
+
+		//3.2read node list
+	size = map_count * sizeof(sdr_node_t);
+	ret = read(fd , &pmap->node_list[0] ,  size);
+	if(ret != size)
+	{
+		print_info(INFO_ERR , log_fp , "<%s>fail! read node_entry failed! target:%d read:%d" , __FUNCTION__ , size , ret);
+		SDR_LOAD_BIN_FAIL;
+	}
+
+	//4. 读取packed_sym_table 并转成 sym_table
+	memset(buff , 0 , sizeof(buff));
+	ret = read(fd , buff , sizeof(packed_sym_table_t));
+	if(ret != sizeof(packed_sym_table_t))
+	{
+		print_info(INFO_ERR , log_fp , "<%s> fail! read packed_sym_table  failed! target:%d read:%d" , __FUNCTION__ , sizeof(packed_sym_table_t) ,
+				ret);
+		SDR_LOAD_BIN_FAIL;
+	}
+	sym_list_size = ((packed_sym_table_t *)buff)->sym_list_size;
+	my_list_size = ((packed_sym_table_t *)buff)->my_list_size;
+	if(sym_list_size==0 || my_list_size==0)
+	{
+		print_info(INFO_ERR , log_fp , "<%s> failed! packed_sym data illegal! sym_list_size:%d my_list_size:%d" , __FUNCTION__ , sym_list_size ,
+				my_list_size);
+		SDR_LOAD_BIN_FAIL;
+	}
+
+		//4.1malloc
+	psym = (sym_table_t *)calloc(1 , sizeof(sym_table_t) + sym_list_size*sizeof(sym_entry_t));
+	if(!psym)
+	{
+		print_info(INFO_ERR , log_fp , "<%s> failed! calloc sym_table failed! err:%s" , __FUNCTION__ , strerror(errno));
+		SDR_LOAD_BIN_FAIL;
+	}
+	psym->count = my_list_size;
+	pres->psym_table = psym;
+
+	ppacked_sym = (packed_sym_table_t *)calloc(1 , sizeof(packed_sym_table_t) + my_list_size*sizeof(packed_sym_entry_t));
+	if(!ppacked_sym)
+	{
+		print_info(INFO_ERR , log_fp , "<%s> failed! calloc packed_sym_table failed! err:%s" , __FUNCTION__ , strerror(errno));
+		SDR_LOAD_BIN_FAIL;
+	}
+	ppacked_sym->sym_list_size = sym_list_size;
+	ppacked_sym->my_list_size = my_list_size;
+
+		//4.2read packed_sym
+	size = my_list_size * sizeof(packed_sym_entry_t);
+	ret = read(fd , &ppacked_sym->entry_list[0] ,  size);
+	if(ret != size)
+	{
+		print_info(INFO_ERR , log_fp , "<%s>fail! read packed_sym_entry failed! target:%d read:%d" , __FUNCTION__ , size , ret);
+		SDR_LOAD_BIN_FAIL;
+	}
+
+		//4.3 convert packed_sym_table --> sym_table
+	ret = unpack_to_sym_table(ppacked_sym , psym);
+	if(ret < 0)
+	{
+		print_info(INFO_ERR , log_fp , "<%s>failed! unpack to sym_table failed!" , __FUNCTION__);
+		free(ppacked_sym);
+		SDR_LOAD_BIN_FAIL;
+	}
+
+		//4.4print and release
+	//dump_packed_sym_table(ppacked_sym);
+	//dump_sym_table(psym , sym_list_size);
+	free(ppacked_sym);
+
+
 	//4.文件读位置指向sdr_nod_map
-	lseek(fd , 0-sizeof(sdr_node_map_t) , SEEK_CUR);
+	//lseek(fd , 0-sizeof(sdr_node_map_t) , SEEK_CUR);
 
 	/***Handle*/
+	/*
 	//1.分配内存
 	size = sizeof(sdr_data_res_t) + sizeof(sdr_node_map_t) + map_count*sizeof(sdr_node_t) + sizeof(sym_table_t) + max_node*sizeof(sym_entry_t);
 	pres = (sdr_data_res_t *)malloc(size);
@@ -131,9 +237,9 @@ sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 	strncpy(pres->magic , SDR_MAGIC_STR , strlen(SDR_MAGIC_STR));
 	pres->max_node = max_node;
 	pres->pnode_map = (sdr_node_map_t *)start;
-	pres->psym_table = (sym_table_t *)(start + sizeof(sdr_node_map_t) + map_count*sizeof(sdr_node_t));
+	pres->psym_table = (sym_table_t *)(start + sizeof(sdr_node_map_t) + map_count*sizeof(sdr_node_t));*/
 
-	print_info(INFO_NORMAL , log_fp , "max node:%d, map_count:%d , entry_count:%d" , max_node , pres->pnode_map->count , pres->psym_table->count);
+	print_info(INFO_NORMAL , log_fp , "max node:%d, map_count:%d , entry_size:%d entry_count:%d" , max_node , pres->pnode_map->count , sym_list_size , pres->psym_table->count);
 	return pres;
 }
 
@@ -144,6 +250,13 @@ int sdr_free_bin(sdr_data_res_t *pres)
 {
 	if(!pres)
 		return -1;
+
+	//order by order
+	if(pres->pnode_map)
+		free(pres->pnode_map);
+
+	if(pres->psym_table)
+		free(pres->psym_table);
 
 	free(pres);
 	return 0;
@@ -1383,6 +1496,37 @@ static sdr_node_t *fetch_node_entry_of_type(sdr_data_res_t *pres , char *type_na
 	return NULL;
 }
 
+/*
+ * 将packed_sym_table展开到sym_table里
+ * return: succes 0; failed -1
+ */
+static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym)
+{
+	int pos = -1;
+	int i = 0;
+
+	/***Arg Check*/
+	if(!ppacked || !psym)
+		return -1;
+
+	for(i=0; i<ppacked->my_list_size; i++)
+	{
+		pos = ppacked->entry_list[i].pos;
+		if(pos<0 || pos>=ppacked->sym_list_size)
+		{
+			printf("<%s> failed! pos illegal! pos:%d sym_list_size:%d sym:%s" , __FUNCTION__ , pos , ppacked->sym_list_size ,
+					ppacked->entry_list[i].entry.sym_name);
+			return -1;
+		}
+
+		//set psym
+		memcpy(&psym->entry_list[pos] , &ppacked->entry_list[i].entry , sizeof(sym_entry_t));
+	}
+
+	psym->count = ppacked->my_list_size;
+	return 0;
+}
+
 
 /*
  * 将基本sdr类型转换为对应的字符串
@@ -1455,4 +1599,41 @@ unsigned int BKDRHash(char *str)
     }
 
     return (hash & 0x7FFFFFFF);
+}
+
+//dump table
+int dump_sym_table(sym_table_t *psym_table , int max_size)
+{
+	int i = 0;
+	int checked = 0;
+	printf("<%s> max_size:%d\n" , __FUNCTION__ , max_size);
+	for(i=0; i<max_size&&checked<psym_table->count; i++)
+	{
+		if(psym_table->entry_list[i].index <= 0)
+			continue;
+
+		//print
+		printf("<%d>:{%d , %s}\n" , i , psym_table->entry_list[i].index , psym_table->entry_list[i].sym_name);
+		checked++;
+	}
+
+	return 0;
+}
+
+//dump table
+int dump_packed_sym_table(packed_sym_table_t *ppacked_sym_table)
+{
+	int i = 0;
+	if(!ppacked_sym_table)
+		return -1;
+
+	printf("<%s> sym_list_size:%d my_list_size:%d\n" , __FUNCTION__ , ppacked_sym_table->sym_list_size , ppacked_sym_table->my_list_size);
+	for(i=0; i<ppacked_sym_table->my_list_size; i++)
+	{
+		//print
+		printf("<%d>[%d]{%d:%s}\n" , i , ppacked_sym_table->entry_list[i].pos , ppacked_sym_table->entry_list[i].entry.index ,
+				ppacked_sym_table->entry_list[i].entry.sym_name);
+	}
+
+	return 0;
 }

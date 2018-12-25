@@ -12,22 +12,23 @@
 #include <string.h>
 #include <fcntl.h>
 #include <time.h>
+#include <errno.h>
 
 #include "sdr.h"
 #include "sdrconv.h"
 
+extern int errno;
 static sdr_node_t *sdr_parse_entry(sdr_conv_env_t *penv , sdr_node_t *pparent);
 static int fetch_attr_value(sdr_conv_env_t *penv , char *src , char *attr_name , char *attr_value);
 static int converse_label_type(char *label_type , int *size);
 static char *get_macro_value(sdr_conv_env_t *penv , char *macro_name);
 static sdr_node_t *entry_of_struct(sdr_conv_env_t *penv , sdr_node_t *pparent , char *entry_name);
 static sdr_node_t *entry_of_union(sdr_conv_env_t *penv , sdr_node_t *pparent , int selcted_id);
+static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv);
 
 static int gen_struct_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
 static int gen_union_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
 static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
-
-
 
 /*
  * 分析注释信息
@@ -572,6 +573,7 @@ int sdr_gen_h(sdr_conv_env_t *penv)
 int sdr_gen_bin(sdr_conv_env_t *penv)
 {
 	sdr_data_res_t *pres;
+	packed_sym_table_t *ppacked_sym_table = NULL;
 	int size;
 	char *pstart;
 	int ret;
@@ -611,6 +613,16 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 	}
 
 	//4.写入sym_table
+	ppacked_sym_table = pack_sym_table(penv);
+	if(!ppacked_sym_table)
+	{
+		printf("pack sym table failed!\n");
+		return -1;
+	}
+	//dump_sym_table(pres->psym_table , pres->max_node);
+	//dump_packed_sym_table(ppacked_sym_table);
+	//free(ppacked_sym_table);
+	/*
 	pstart = (char *)pres->psym_table;
 	size = sizeof(sym_table_t) + pres->max_node*sizeof(sym_entry_t);
 	ret = write(penv->out_fd , pstart , size);
@@ -618,7 +630,16 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 	{
 		printf("output %s failed!\n" , penv->output_name);
 		return -1;
+	}*/
+	pstart = (char *)ppacked_sym_table;
+	size = sizeof(packed_sym_table_t) + ppacked_sym_table->my_list_size*sizeof(packed_sym_entry_t);
+	ret = write(penv->out_fd , pstart , size);
+	if(ret != size)
+	{
+		printf("output % failed! when writing packed_sym_table\n" , penv->output_name);
+		return -1;
 	}
+	free(ppacked_sym_table);
 	return 0;
 }
 
@@ -1593,4 +1614,49 @@ static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp)
 	return 0;
 }
 
+/*
+ * 将离散的符号表压缩成紧凑表，并返回对应的紧表指针
+ * 使用之后注意free
+ */
+static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv)
+{
+	sym_table_t *psym_table = NULL;
+	packed_sym_table_t *ppacked_sym_table = NULL;
+	int i = 0;
+	int checked = 0;
+	if(!penv)
+	{
+        printf("%s failed! penv NULL." , __FUNCTION__);
+        return NULL;
+	}
 
+	/***Init*/
+	psym_table = penv->psym_table;
+
+
+	//malloc mem
+	ppacked_sym_table = calloc(1 , sizeof(packed_sym_table_t) + psym_table->count*sizeof(packed_sym_entry_t));
+	if(!ppacked_sym_table)
+	{
+		sdr_print_info(penv , SDR_INFO_ERR , "<%s> failed! calloc packed_sym_table failed! err:%s" , __FUNCTION__ , strerror(errno));
+		return NULL;
+	}
+
+	ppacked_sym_table->sym_list_size = penv->max_node;
+	//for each sym_entry
+	for(i=0; i<penv->max_node && checked<psym_table->count; i++)
+	{
+		if(psym_table->entry_list[i].index<=0)
+			continue;
+
+		//set packed
+		ppacked_sym_table->entry_list[checked].pos = i;
+		memcpy(&ppacked_sym_table->entry_list[checked].entry , &psym_table->entry_list[i] , sizeof(sym_entry_t));
+
+		//update
+		checked++;
+	}
+
+	ppacked_sym_table->my_list_size = checked;
+	return ppacked_sym_table;
+}
