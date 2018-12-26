@@ -138,6 +138,7 @@ struct _sym_entry
 {
 	char sym_name[SDR_NAME_LEN];
 	int index;		//index of node table
+	struct _sym_entry *next;
 }__attribute__((packed));
 typedef struct _sym_entry sym_entry_t;
 
@@ -152,7 +153,9 @@ typedef struct _sym_table sym_table_t;
 struct _packed_sym_entry
 {
 	int pos;	// pos of sym_table.entry_list[];
-	sym_entry_t entry;
+	//sym_entry_t entry;
+	char sym_name[SDR_NAME_LEN];
+	int index;		//index of node table
 }__attribute__((packed));
 typedef struct _packed_sym_entry packed_sym_entry_t;
 

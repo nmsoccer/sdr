@@ -18,6 +18,21 @@
 #include "sdrconv.h"
 
 extern int errno;
+
+/*
+ * Hash Map
+ * 用来扩大max_node(node_map 和 sym_map共用)
+ */
+static int hash_size_map[] = { //7 , 13 , 19 , 27 , 37 ,
+		7, 13 , 19 , 61, 113 , 211 , 379 , 509 , 683 , 911 , //<1K
+		1217 , 1627 , 2179 , 2909 , 3881 , 6907 , 9209, //<10K
+		12281 , 16381 , 21841 , 29123 , 38833 , 51787 , 69061 , 92083, //<100K
+		122777,163729,218357,291143,388211,517619,690163,999983, //<1M
+		1226959 , 1635947 , 2181271 , 2908361 , 3877817 , 5170427,6893911,9191891, //<10M
+		12255871 , 16341163,21788233,29050993,38734667,51646229,68861641,91815541, //<100M
+};
+
+
 static sdr_node_t *sdr_parse_entry(sdr_conv_env_t *penv , sdr_node_t *pparent);
 static int fetch_attr_value(sdr_conv_env_t *penv , char *src , char *attr_name , char *attr_value);
 static int converse_label_type(char *label_type , int *size);
@@ -29,6 +44,8 @@ static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv);
 static int gen_struct_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
 static int gen_union_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
 static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
+static int get_next_hash_size(int curr_value);
+static int extend_max_node(int max_node , sdr_conv_env_t *penv);
 
 /*
  * 分析注释信息
@@ -621,6 +638,7 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 	}
 	//dump_sym_table(pres->psym_table , pres->max_node);
 	//dump_packed_sym_table(ppacked_sym_table);
+
 	//free(ppacked_sym_table);
 	/*
 	pstart = (char *)pres->psym_table;
@@ -761,6 +779,7 @@ int forward_to_char(char *src , char target)
 sdr_node_t *get_node(sdr_conv_env_t *penv)
 {
 	sdr_node_t *pnode;
+	int ret = -1;
 
 	/***Arg Check*/
 	if(!penv)
@@ -768,8 +787,16 @@ sdr_node_t *get_node(sdr_conv_env_t *penv)
 
 	if(penv->pnode_map->count >= penv->max_node)
 	{
-		printf("Malloc Node Count:%d Is Not Enough!" , penv->max_node);
+		printf("memory error! max Node Count:%d is not enough!\n"  , penv->max_node);
+		printf("Please use 'sdrconv -s number -I inputfile' to specify max node\n");
 		return NULL;
+		/*
+		ret = extend_max_node(penv->max_node , penv);
+		if(ret < 0)
+		{
+			printf("<%s> extend max node failed!\n" , __FUNCTION__);
+			return NULL;
+		}*/
 	}
 
 	pnode = (sdr_node_t *)&penv->pnode_map->node_list[penv->pnode_map->count];
@@ -887,6 +914,7 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 {
 	int i;
 	int pos;
+	int ret = -1;
 
 	/***Arg Check*/
 	if(!penv || !sym_name || strlen(sym_name)<=0 || index<=0)
@@ -894,8 +922,17 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 
 	if(penv->psym_table->count >= penv->max_node)
 	{
-		sdr_print_info(penv , SDR_INFO_ERR , "Symtable is Full!");
+		printf("memory error! max Node Count:%d is not enough!\n"  , penv->max_node);
+		printf("Please use 'sdrconv -s number -I inputfile' to specify max node\n");
 		return -1;
+		/*
+		sdr_print_info(penv , SDR_INFO_MAIN , "<%s> Symtable is Full!" , __FUNCTION__);
+		ret = extend_max_node(penv->max_node , penv);
+		if(ret < 0)
+		{
+			sdr_print_info(penv , SDR_INFO_ERR , "<%s> failed! extend max node failed!" , __FUNCTION__);
+			return -1;
+		}*/
 	}
 
 	/***Handle*/
@@ -1577,7 +1614,7 @@ static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp)
 		return -1;
 
 	/***Handle*/
-	fprintf(fp , "\t");
+	fprintf(fp , "    "); //four space
 	//1.type name
 	if(pnode->data.entry_value.entry_type==SDR_T_STRUCT || pnode->data.entry_value.entry_type==SDR_T_UNION)	//复合类型
 	{
@@ -1613,6 +1650,101 @@ static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp)
 	fflush(fp);
 	return 0;
 }
+
+/*
+ * 根据当前值，获得下一个hash size
+ */
+static int get_next_hash_size(int curr_value)
+{
+	int i = 0;
+
+	for(i=0; i<sizeof(hash_size_map); i++)
+	{
+		if(hash_size_map[i] > curr_value)
+			return hash_size_map[i];
+	}
+
+	//wtf so many entries?
+	printf("<%s> failed! can not find bigger than %d\n" , __FUNCTION__ , curr_value);
+	return -1;
+}
+
+#if 0
+/*
+ * 被废弃
+ * 扩展node上限
+ * 同时需要重构node_map和sym_table,它们都受到max_node约束
+ * return 0 success; -1 failed
+ * 由于在解析过程中该函数会重新开辟sym&node地址，所以之前分配且在使用的node地址就会被丢弃
+ * 无法完成解析过程。
+ */
+static int extend_max_node(int max_node , sdr_conv_env_t *penv)
+{
+	int next_size = -1;
+	sdr_node_map_t *pmap = NULL;
+	sym_table_t *psym = NULL;
+	int i = 0;
+
+	/***Arg Check*/
+	if(!penv)
+	{
+		sdr_print_info(penv , SDR_INFO_ERR , "<%s> failed! arg NULL" , __FUNCTION__);
+		return -1;
+	}
+
+	/***Handle*/
+	//1. get next
+	next_size = get_next_hash_size(max_node);
+	if(next_size < 0)
+	{
+		sdr_print_info(penv , SDR_INFO_ERR , "<%s> failed! get next_size failed! max_node:%d" , __FUNCTION__ , max_node);
+		return -1;
+	}
+
+	//2.malloc new memory
+	pmap = (sdr_node_map_t *)calloc(1 , sizeof(sdr_node_map_t) + next_size*sizeof(sdr_node_t));
+	if(!pmap)
+	{
+		sdr_print_info(penv , SDR_INFO_ERR , "<%s> failed! malloc new node_map fail, err:%s" , __FUNCTION__ , strerror(errno));
+		return -1;
+	}
+
+	psym = (sym_table_t *)calloc(1 , sizeof(sym_table_t) + next_size*sizeof(sym_entry_t));
+	if(!psym)
+	{
+		sdr_print_info(penv , SDR_INFO_ERR , "<%s> failed! malloc new sym_table fail, err:%s" , __FUNCTION__ , strerror(errno));
+		free(pmap);
+		return -1;
+	}
+
+	//3.copy node_map
+	pmap->count = penv->pnode_map->count;
+	memcpy(&pmap->node_list[0] , &penv->pnode_map->node_list[0] , pmap->count*sizeof(sdr_node_t));
+
+	//4.copy sym table
+	psym->count = penv->psym_table->count;
+		//原有指针链直接copy即可，不用释放
+	memcpy(&psym->entry_list[0] , &penv->psym_table->entry_list[0] , max_node * sizeof(sym_entry_t));
+
+	sdr_print_info(penv , SDR_INFO_MAIN , "<%s> success! old node:%d old map:%lx old sym:%lx , new node:%d , new map:%lx new sym:%lx" ,
+			__FUNCTION__ , max_node , penv->pnode_map , penv->psym_table , next_size , pmap , psym);
+
+	//5.free old
+	free(penv->pnode_map);
+	free(penv->psym_table);
+
+	//6.reset
+	penv->max_node = next_size;
+	penv->pnode_map = pmap;
+	penv->psym_table = psym;
+
+	penv->sdr_res.max_node = next_size;
+	penv->sdr_res.pnode_map = pmap;
+	penv->sdr_res.psym_table = psym;
+
+	return 0;
+}
+#endif
 
 /*
  * 将离散的符号表压缩成紧凑表，并返回对应的紧表指针
@@ -1651,7 +1783,9 @@ static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv)
 
 		//set packed
 		ppacked_sym_table->entry_list[checked].pos = i;
-		memcpy(&ppacked_sym_table->entry_list[checked].entry , &psym_table->entry_list[i] , sizeof(sym_entry_t));
+		ppacked_sym_table->entry_list[checked].index = psym_table->entry_list[i].index;
+		memcpy(ppacked_sym_table->entry_list[checked].sym_name , psym_table->entry_list[i].sym_name , SDR_NAME_LEN);
+
 
 		//update
 		checked++;

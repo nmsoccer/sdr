@@ -423,7 +423,7 @@ int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *typ
 
 	if(ret == 0)
 	{
-		printf("pack '%s' success! %d -> %d\n" , type_name , sdr_in.index , sdr_out.index);
+		//printf("pack '%s' success! %d -> %d\n" , type_name , sdr_in.index , sdr_out.index);
 		memset(pout_buff , 0 , 8);
 		memcpy(pout_buff , &version , sizeof(int));
 		memcpy(&pout_buff[4] , &sdr_out.index , sizeof(int));
@@ -464,7 +464,7 @@ int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *t
 	//2.version + length
 	memcpy(&version , pin_buff , sizeof(int));
 	memcpy(&sdr_in.length , &pin_buff[4] , sizeof(int));
-	print_info(INFO_NORMAL , log_fp , "ready to unpack '%s', version:%d,length:%d" , type_name , version , sdr_in.length);
+	//print_info(INFO_NORMAL , log_fp , "ready to unpack '%s', version:%d,length:%d" , type_name , version , sdr_in.length);
 	if(sdr_in.length == 0)	//数据长度为0
 	{
 		ret = 0;
@@ -509,7 +509,7 @@ int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *t
 _unpack_end:
 	if(ret == 0)
 	{
-		print_info(INFO_NORMAL , log_fp , "unpack '%s' success! %d->%d", type_name , sdr_in.index , sdr_out.index);
+		//print_info(INFO_NORMAL , log_fp , "unpack '%s' success! %d->%d", type_name , sdr_in.index , sdr_out.index);
 		return sdr_out.index;
 	}
 	else
@@ -1515,12 +1515,13 @@ static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym)
 		if(pos<0 || pos>=ppacked->sym_list_size)
 		{
 			printf("<%s> failed! pos illegal! pos:%d sym_list_size:%d sym:%s" , __FUNCTION__ , pos , ppacked->sym_list_size ,
-					ppacked->entry_list[i].entry.sym_name);
+					ppacked->entry_list[i].sym_name);
 			return -1;
 		}
 
 		//set psym
-		memcpy(&psym->entry_list[pos] , &ppacked->entry_list[i].entry , sizeof(sym_entry_t));
+		memcpy(psym->entry_list[pos].sym_name , ppacked->entry_list[i].sym_name , SDR_NAME_LEN);
+		psym->entry_list[pos].index = ppacked->entry_list[i].index;
 	}
 
 	psym->count = ppacked->my_list_size;
@@ -1613,7 +1614,8 @@ int dump_sym_table(sym_table_t *psym_table , int max_size)
 			continue;
 
 		//print
-		printf("<%d>:{%d , %s}\n" , i , psym_table->entry_list[i].index , psym_table->entry_list[i].sym_name);
+		printf("<%d>:{%d , %s , %lx}\n" , i , psym_table->entry_list[i].index , psym_table->entry_list[i].sym_name ,
+				psym_table->entry_list[i].next);
 		checked++;
 	}
 
@@ -1631,8 +1633,8 @@ int dump_packed_sym_table(packed_sym_table_t *ppacked_sym_table)
 	for(i=0; i<ppacked_sym_table->my_list_size; i++)
 	{
 		//print
-		printf("<%d>[%d]{%d:%s}\n" , i , ppacked_sym_table->entry_list[i].pos , ppacked_sym_table->entry_list[i].entry.index ,
-				ppacked_sym_table->entry_list[i].entry.sym_name);
+		printf("<%d>[%d]{%d:%s}\n" , i , ppacked_sym_table->entry_list[i].pos , ppacked_sym_table->entry_list[i].index ,
+				ppacked_sym_table->entry_list[i].sym_name);
 	}
 
 	return 0;
