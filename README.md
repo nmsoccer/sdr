@@ -117,12 +117,12 @@ _协议数据通过xml文件进行定义，为了解析与协议的规范性，�
 ### 工具
 sdrconv用于生成与解析*.sdr协议描述文件
 1. sdrconv -I demo.xml 将解析xml协议文件并生成demo.sdr协议描述文件
-2. sdrconv -R -I demo.sdr 将解析demo.sdr协议描述文件并生成对应的demo.sdr.xml文本化描述文件(原有的注释会被丢弃)
-3. sdrconv -s 将执行工具使用的节点数目，默认是20K
+2. sdrconv -R -I demo.sdr 将解析demo.sdr协议描述文件并生成对应的demo.sdr.xml文本化描述文件(原有的注释会被丢弃)  
+3. 在转换时推荐使用conv2sdr.sh demo.xml 脚本进行sdr协议文件生成
 
 ### 编译(以demo为例)
 1. 在demo目录下创建协议文件demo.xml
-2. 在demo目录下执行sdrconv -I demo.xml 如果成功执行将会生成demo.h
+2. 在demo目录下执行conv2sdr.sh demo.xml 如果成功执行将会生成demo.h
 3. gcc -g demo.c -lsdr -o demo 生成可执行文件
 _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后执行/sbin/ldconfig_
 4. 或者直接将源文件编译  
