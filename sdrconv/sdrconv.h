@@ -63,6 +63,7 @@ extern int sdr_reverse_bin(sdr_conv_env_t *penv);
 
 extern sdr_node_t *get_node(sdr_conv_env_t *penv);
 extern int read_one_line(sdr_conv_env_t *penv);
+extern int get_next_hash_size(int curr_value);
 extern int forward_miss_char(char *src , char miss);
 extern int forward_to_char(char *src , char target);
 extern int copy_str(char *dest , char *src);

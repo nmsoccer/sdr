@@ -49,7 +49,17 @@ int main(int argc , char **argv)
 			printf("sdrconv 1.0");
 			return 0;
 		case 's':
-			sdr_conv_env.max_node = atoi(optarg);
+			//sdr_conv_env.max_node = atoi(optarg);
+			//choose a suitable bucket
+			ret = get_next_hash_size(atoi(optarg));
+			if(ret < 0)
+			{
+				printf("set max node value is illegal!\n");
+				sdr_show_help();
+				return -1;
+			}
+			sdr_conv_env.max_node = ret;
+			printf("max node sets to %d\n" , ret);
 			break;
 		case 'R':
 			sdr_conv_env.is_reverse = 1;

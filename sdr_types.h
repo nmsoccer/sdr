@@ -13,6 +13,8 @@ extern "C" {
 #endif
 
 /************************宏****************/
+#define DEFAULT_MAX_NODE_COUNT (21841)	//默认NODE 21841数目
+
 enum SDR_BASE_CLASS	//XML文档基本节点.主节点是构成XML第一层次的节点，不包含SDR_CLASS_ENTRY
 {
 	SDR_CLASS_START,	//起始
@@ -120,7 +122,6 @@ struct _sdr_node
 }__attribute__((packed));
 typedef struct _sdr_node sdr_node_t;
 
-#define DEFAULT_MAX_NODE_COUNT (20*1024)	//默认NODE 20K数目
 /*
  * MEM<->FILE MAP 用于记录所有节点的数据结构，同时也可持久化到BIN文件中
  * 顺序存储

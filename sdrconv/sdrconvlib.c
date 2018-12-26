@@ -24,7 +24,7 @@ extern int errno;
  * 用来扩大max_node(node_map 和 sym_map共用)
  */
 static int hash_size_map[] = { //7 , 13 , 19 , 27 , 37 ,
-		7, 13 , 19 , 61, 113 , 211 , 379 , 509 , 683 , 911 , //<1K
+		61, 113 , 211 , 379 , 509 , 683 , 911 , //<1K
 		1217 , 1627 , 2179 , 2909 , 3881 , 6907 , 9209, //<10K
 		12281 , 16381 , 21841 , 29123 , 38833 , 51787 , 69061 , 92083, //<100K
 		122777,163729,218357,291143,388211,517619,690163,999983, //<1M
@@ -44,7 +44,6 @@ static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv);
 static int gen_struct_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
 static int gen_union_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
 static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp);
-static int get_next_hash_size(int curr_value);
 static int extend_max_node(int max_node , sdr_conv_env_t *penv);
 
 /*
@@ -1012,6 +1011,24 @@ int fetch_sym_map_index(sdr_conv_env_t *penv , char *sym_name)
 	return -1;
 }
 
+/*
+ * 根据当前值，获得下一个hash size
+ */
+int get_next_hash_size(int curr_value)
+{
+	int i = 0;
+
+	for(i=0; i<sizeof(hash_size_map); i++)
+	{
+		if(hash_size_map[i] > curr_value)
+			return hash_size_map[i];
+	}
+
+	//wtf so many entries?
+	printf("<%s> failed! can not find bigger than %d\n" , __FUNCTION__ , curr_value);
+	return -1;
+}
+
 /*********************STATIC FUNCTION*/
 /*
  * 分析entry
@@ -1649,24 +1666,6 @@ static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp)
 	fprintf(fp , " %s  %s\n" , pnode->node_desc , pnode->data.entry_value.id_name);
 	fflush(fp);
 	return 0;
-}
-
-/*
- * 根据当前值，获得下一个hash size
- */
-static int get_next_hash_size(int curr_value)
-{
-	int i = 0;
-
-	for(i=0; i<sizeof(hash_size_map); i++)
-	{
-		if(hash_size_map[i] > curr_value)
-			return hash_size_map[i];
-	}
-
-	//wtf so many entries?
-	printf("<%s> failed! can not find bigger than %d\n" , __FUNCTION__ , curr_value);
-	return -1;
 }
 
 #if 0
