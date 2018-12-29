@@ -14,9 +14,11 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <ctype.h>
 #include "sdr.h"
 
 extern int errno;
+static int sdr_dump_max_version = 0;
 /************LOCAL FUNCTION*/
 static int gen_struct_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp);
 static int gen_union_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp);
@@ -31,8 +33,14 @@ static int get_sym_map_index(sdr_data_res_t *pres , char *sym_name);
 static int get_base_type_size(char type);
 static int print_info(char type , FILE *fp , char *fmt , ...);
 static sdr_node_t *fetch_node_by_index(sdr_data_res_t *pres , int iIndex);
+static sdr_node_t *fetch_node_by_type(sdr_data_res_t *pres , char *type_name);
 static sdr_node_t *fetch_node_entry_of_type(sdr_data_res_t *pres , char *type_name , char *member_name , int *perr_code);
 static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym);
+
+static int dump_struct_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , FILE *fp);
+static int dump_union_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , int my_select , FILE *fp);
+static int dump_basic_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , FILE *fp);
+
 
 /************GLOBAL FUNCTION*/
 /*
@@ -650,11 +658,62 @@ int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member ,
 	return pnode->data.entry_value.offset;
 }
 
+/*
+ * 打印结构体的数据信息
+ * @type_name:xml里定义的结构体名
+ * @结构体数据的起始地址
+ * @打印到的目标文件
+ * @return:
+ * 0 : success
+ * -1:failed
+ */
+int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp)
+{
+	sdr_node_t *pmain_node;
+
+	/***Arg Check*/
+	if(!pres || !type_name || !struct_data)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! some arg nil!" , __FUNCTION__);
+		return -1;
+	}
+
+	pmain_node = fetch_node_by_type(pres , type_name);
+	if(!pmain_node)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! type %s not found!" , __FUNCTION__ , type_name);
+		return -1;
+	}
+
+	if(pmain_node->class != SDR_CLASS_STRUCT)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! %s not a struct!" , __FUNCTION__ , type_name);
+		return -1;
+	}
+
+	/***Print Head*/
+	print_info(INFO_NORMAL , fp , "<?xml version=\"1.0\" encoding=\"utf8\" ?>");
+	print_info(INFO_NORMAL , fp , "<!-- created by sdr on %s %s -->" , __DATE__ , __TIME__);
+	print_info(INFO_NORMAL , fp , "<!-- @https://github.com/nmsoccer/sdr --> \n");
+
+	/***Hanlde*/
+	sdr_dump_max_version = 0;
+	dump_struct_info(pres , "" , type_name , "" , pmain_node , struct_data , fp);
+
+	/***Print Version*/
+	print_info(INFO_NORMAL , fp , "\n<version name=\"dump_max\" value=\"%d\" />" , sdr_dump_max_version);
+	sdr_dump_max_version = 0;
+
+	if(fp)
+		fflush(fp);
+	return 0;
+}
+
 
 static int print_info(char type , FILE *fp , char *fmt , ...)
 {
 	va_list vp;
-	char buff[1024] = {0};
+	char buff[4096] = {0};
 
 	/***Arg Check*/
 	if(!fmt || strlen(fmt)<=0)
@@ -667,6 +726,7 @@ static int print_info(char type , FILE *fp , char *fmt , ...)
 	switch(type)
 	{
 	case INFO_NORMAL:
+	case INFO_DISABLE:
 		break;
 	case INFO_MAIN:
 		strncpy(buff , "Main:" , sizeof(buff));
@@ -678,8 +738,19 @@ static int print_info(char type , FILE *fp , char *fmt , ...)
 
 	vsnprintf(&buff[strlen(buff)] , sizeof(buff)-strlen(buff) , fmt , vp);
 	if(fp)
-		fprintf(fp , "%s\n" , buff);
-	printf("%s\n" , buff);
+	{
+		if(type != INFO_DISABLE)
+			fprintf(fp , "%s\n" , buff);
+		else
+			fprintf(fp , "%s" , buff);
+	}
+	else
+	{
+		if(type != INFO_DISABLE)
+			printf("%s\n" , buff);
+		else
+			printf("%s" , buff);
+	}
 	return 0;
 }
 
@@ -821,7 +892,7 @@ static int gen_entry_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 	}
 	else //基本类型
 	{
-		start = reverse_label_type(pnode->data.entry_value.entry_type);
+		start = reverse_label_type(pnode->data.entry_value.entry_type , NULL);
 		if(!start)
 		{
 			print_info(INFO_ERR , NULL , "Gen Entry Failed! Get Entry '%s' Type Failed\n" , pnode->node_name);
@@ -1453,6 +1524,26 @@ static sdr_node_t *fetch_node_by_index(sdr_data_res_t *pres , int iIndex)
 }
 
 /*
+ * 根据类型名获得对应的起始node
+ * @return:
+ * NULL: Failed
+ * ELSE : Success
+ */
+static sdr_node_t *fetch_node_by_type(sdr_data_res_t *pres , char *type_name)
+{
+	int index = -1;
+	if(!pres || !type_name)
+		return NULL;
+
+	index = get_sym_map_index(pres , type_name);
+	if(index < 0)
+		return NULL;
+
+	return fetch_node_by_index(pres , index);
+}
+
+
+/*
  * 获取某结构之成员node
  * @type_name:类型名[仅限于结构]
  * @member_name[成员名]
@@ -1599,10 +1690,11 @@ static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym)
 
 /*
  * 将基本sdr类型转换为对应的字符串
+ * @format_buff : 如果不为空则返回对应printf的限定符号[注意缓冲区足够长]
  * NULL:错误
  * ELSE:类型字符指针
  */
-char *reverse_label_type(char sdr_type)
+char *reverse_label_type(char sdr_type , char *format_buff)
 {
 	static char str_type[SDR_NAME_LEN] = {0};
 
@@ -1616,36 +1708,58 @@ char *reverse_label_type(char sdr_type)
 	{
 		case SDR_T_CHAR:
 			strncpy(str_type , "char" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%d");
 			break;
 		case SDR_T_UCHAR:
 			strncpy(str_type , "unsigned char" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%u");
 			break;
 		case SDR_T_SHORT:
 			strncpy(str_type , "short" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%d");
 			break;
 		case SDR_T_USHORT:
 			strncpy(str_type , "unsigned short" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%u");
 			break;
 		case SDR_T_INT:
 			strncpy(str_type , "int" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%d");
 			break;
 		case SDR_T_UINT:
 			strncpy(str_type , "unsigned int" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%u");
 			break;
 		case SDR_T_LONG:
 			strncpy(str_type , "long" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%ld");
 			break;
 		case SDR_T_ULONG:
 			strncpy(str_type , "unsigned long" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%lu");
 			break;
 		case SDR_T_FLOAT:
 			strncpy(str_type , "float" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%f");
 			break;
 		case SDR_T_DOUBLE:
 			strncpy(str_type , "double" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%lf");
 			break;
 		case SDR_T_LONGLONG:
 			strncpy(str_type , "long long" , sizeof(str_type));
+			if(format_buff)
+				strcpy(format_buff , "%lld");
 			break;
 		default:
 			return NULL;
@@ -1655,6 +1769,10 @@ char *reverse_label_type(char sdr_type)
 //	printf("type is:%s\n" , str_type);
 	return str_type;
 }
+
+
+
+
 
 // BKDR Hash Function
 unsigned int BKDRHash(char *str)
@@ -1725,5 +1843,403 @@ int dump_packed_sym_table(packed_sym_table_t *ppacked_sym_table)
 				ppacked_sym_table->entry_list[i].sym_name);
 	}
 
+	return 0;
+}
+
+/*
+ * dump结构体数据
+ * @name  该数据在父结构里的成员名 如果为""则是最外层
+ * @type_name 该数据的类型名
+ * @prefix 缩进
+ * @pmain_node 该数据的node
+ * @data 该数据的起始地址
+ * @fp 打印文件句柄
+ * @return:
+ * 0  :  success
+ * -1:  failed
+ */
+static int dump_struct_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , FILE *fp)
+{
+	sdr_node_t *pnode = NULL;
+	sdr_node_t *ptmp = NULL;
+	long refer = 0;
+	int select = 0;
+	int i = 0;
+	char next_prefix[128] = {0};
+	char *pstr = NULL;
+	int ret = 0;
+	unsigned char value = 0;
+	/***Arg Check*/
+	//Basic Arg Not Check
+	if(!type_name || strlen(type_name)<=0)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! type_name illegal!" , __FUNCTION__);
+		return -1;
+	}
+
+	if(!data)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! data NULL! name:%s type:%s" , __FUNCTION__ , name , type_name);
+		return -1;
+	}
+
+	if(pmain_node->class != SDR_CLASS_STRUCT)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! class %d not a struct! name:%s type:%s" , __FUNCTION__ , pmain_node->class , name , type_name);
+		return -1;
+	}
+
+	/***Print Head*/
+	snprintf(next_prefix , sizeof(next_prefix) , "%s%s" , prefix , SDR_DUMP_SPAN);
+	print_info(INFO_NORMAL , fp , "%s<struct name=\"%s\" type=\"%s\">" , prefix , name , type_name);
+	if(pmain_node->version > sdr_dump_max_version)
+		sdr_dump_max_version = pmain_node->version;
+
+	/***Handle*/
+	pnode = fetch_node_by_index(pres , pmain_node->data.struct_value.child_idx);
+	while(pnode)
+	{
+		//check class
+		if(pnode->class != SDR_CLASS_ENTRY)
+		{
+			print_info(INFO_ERR , fp , "<%s> failed! entry not entry! name:%s class:%d" , __FUNCTION__ , pnode->class , pnode->node_name);
+			return -1;
+		}
+
+		refer = 1; //如果不是数组则至少循环一次
+		//check refer[数组]
+		if(pnode->data.entry_value.count>0)
+		{
+			refer = pnode->data.entry_value.count; //refer == count
+
+			if(pnode->data.entry_value.refer_idx>0)
+			{
+				refer = 0;	//set refer
+				ptmp = fetch_node_by_index(pres , pnode->data.entry_value.refer_idx);
+				if(!ptmp)
+				{
+					print_info(INFO_ERR , fp , "<%s> failed! refer of entry not found! entry name:%s refer_idx:%s" , __FUNCTION__ ,
+							pnode->node_name , pnode->data.entry_value.refer_idx);
+					return -1;
+				}
+
+				//get value of refer
+				memcpy(&refer , data+ptmp->data.entry_value.offset , ptmp->size);
+				//printf("entry name:%s refer name:%s refer:%d count:%d\n" , pnode->node_name , ptmp->node_name , refer,
+				//		pnode->data.entry_value.count);
+			}
+		}
+
+		do
+		{
+			//char[] 要特殊处理
+			if((pnode->data.entry_value.entry_type==SDR_T_CHAR || pnode->data.entry_value.entry_type==SDR_T_UCHAR) && refer>1)
+			{
+
+				if(pnode->version > sdr_dump_max_version)
+						sdr_dump_max_version = pnode->version;
+
+				print_info(INFO_DISABLE , fp , "%s<entry name=\"%s\" type=\"%s[]\"  size=\"%d\" value=\"" , next_prefix , pnode->node_name ,
+						reverse_label_type(pnode->data.entry_value.entry_type , NULL) , refer);
+				for(i=0; i<refer; i++)
+				{
+					value = *((char *)(data+pnode->data.entry_value.offset+i));
+					if (isprint(value))
+						print_info(INFO_DISABLE , fp , "'%c'" , value);
+					else
+						print_info(INFO_DISABLE , fp , "'0x%x'" , value);
+				}
+				print_info(INFO_NORMAL , fp , "\" />");
+				break;
+			}
+
+			//所有的都当成数组搞
+			for(i=0; i<refer; i++)
+			{
+				//basic entry
+				if(pnode->data.entry_value.entry_type>=SDR_T_CHAR && pnode->data.entry_value.entry_type<=SDR_T_MAX)
+				{
+					ret = dump_basic_info(pres , pnode->node_name , "" , next_prefix ,
+							pnode , data+pnode->data.entry_value.offset+i*pnode->size , fp);
+					if(ret < 0)
+						return -1;
+				}
+
+				//struct
+				if(pnode->data.entry_value.entry_type == SDR_T_STRUCT)
+				{
+					//找到该结构对应的struct
+					ptmp = fetch_node_by_index(pres , pnode->data.entry_value.type_idx);
+					if(!ptmp)
+					{
+						print_info(INFO_ERR , fp , "<%s>failed! get struct_type of entry failed! entry name:%s" , __FUNCTION__ , pnode->node_name);
+						return -1;
+					}
+
+					//dump struct
+					ret = dump_struct_info(pres , pnode->node_name , ptmp->node_name , next_prefix , ptmp , data+pnode->data.entry_value.offset+i*pnode->size ,
+							fp);
+					if(ret < 0)
+						return -1;
+				}
+
+				//union
+				if(pnode->data.entry_value.entry_type == SDR_T_UNION)
+				{
+					//找到选择该union对应的成员的变量
+					ptmp = fetch_node_by_index(pres , pnode->data.entry_value.select_idx);
+					if(!ptmp)
+					{
+						print_info(INFO_ERR , fp , "<%s> failed! select of entry not found! entry name:%s select_idx:%s" , __FUNCTION__ ,
+								pnode->node_name , pnode->data.entry_value.select_idx);
+						return -1;
+					}
+					if(ptmp->class != SDR_CLASS_ENTRY) //必须是个entry
+					{
+						print_info(INFO_ERR , fp , "<%s> failed! select of entry is not an entry! select-entry name:%s class:%s" , __FUNCTION__ ,
+								ptmp->node_name , ptmp->class);
+						return -1;
+					}
+
+					//获得变量值
+					select = 0;
+					memcpy(&select , data+ptmp->data.entry_value.offset , ptmp->size);
+
+					//获得对应的union类型
+					ptmp = fetch_node_by_index(pres , pnode->data.entry_value.type_idx);
+					if(!ptmp)
+					{
+						print_info(INFO_ERR , fp , "<%s>failed! get union_type of entry failed! entry name:%s" , __FUNCTION__ , pnode->node_name);
+						return -1;
+					}
+
+					//dump union
+					ret = dump_union_info(pres , pnode->node_name , ptmp->node_name , next_prefix , ptmp , data+pnode->data.entry_value.offset+i*pnode->size ,
+							select , fp);
+					if(ret < 0)
+						return -1;
+				}
+
+			}
+			break;
+		}while(0);
+
+_continue:
+		//next node
+		pnode = fetch_node_by_index(pres , pnode->sibling_idx);
+	}
+
+	/***Print Tail*/
+	print_info(INFO_NORMAL , fp , "%s</struct>" , prefix);
+	return 0;
+}
+
+/*
+ * dump联合体数据
+ * @name  该数据在父结构里的成员名 (union不会在最外层)
+ * @type_name 该数据的类型名
+ * @prefix 缩进
+ * @pmain_node 该数据的node
+ * @data 该数据的起始地址
+ * @select 使用的该联合内部的子成员id
+ * @fp 打印文件句柄
+ * @return:
+ * 0  :  success
+ * -1:  failed
+ */
+static int dump_union_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , int my_select , FILE *fp)
+{
+	sdr_node_t *pnode = NULL;
+	sdr_node_t *ptmp = NULL;
+	long refer = 0;
+	long select = 0;
+	int i = 0;
+	char next_prefix[128] = {0};
+	char *pstr = NULL;
+	int ret = 0;
+	unsigned char value = 0;
+	/***Arg Check*/
+	//Basic Arg Not Check
+	if(!type_name || strlen(type_name)<=0)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! type_name illegal!" , __FUNCTION__);
+		return -1;
+	}
+
+	if(!data)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! data NULL! name:%s type:%s" , __FUNCTION__ , name , type_name);
+		return -1;
+	}
+
+	if(pmain_node->class != SDR_CLASS_UNION)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! class %d not a struct! name:%s type:%s" , __FUNCTION__ , pmain_node->class , name , type_name);
+		return -1;
+	}
+
+	/***Print Head*/
+	snprintf(next_prefix , sizeof(next_prefix) , "%s%s" , prefix , SDR_DUMP_SPAN);
+	print_info(INFO_NORMAL , fp , "%s<union name=\"%s\" type=\"%s\">" , prefix , name , type_name);
+
+	if(pmain_node->version > sdr_dump_max_version)
+		sdr_dump_max_version = pmain_node->version;
+
+	/***Handle*/
+	//根据my_select 获得 select == my_select的pnode
+	pnode = fetch_node_by_index(pres , pmain_node->data.union_value.child_idx);
+	while(pnode)
+	{
+		if(pnode->class != SDR_CLASS_ENTRY)
+		{
+			print_info(INFO_ERR , fp , "<%s> failed! union member class  not a entry! union type:%s member name:%s class:%d" , __FUNCTION__ , type_name , pnode->node_name ,
+					pnode->class);
+			return -1;
+		}
+
+		if(pnode->data.entry_value.select_id == my_select)
+			break;
+
+		pnode = fetch_node_by_index(pres , pnode->sibling_idx);
+	}
+	if(!pnode || pnode->data.entry_value.select_id != my_select)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! union member of %d not found! union:%s" , __FUNCTION__ , my_select , type_name);
+		return -1;
+	}
+
+	//和struct类似 处理pnode
+	//check class
+	if(pnode->class != SDR_CLASS_ENTRY)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! entry not entry! name:%s class:%d" , __FUNCTION__ , pnode->class , pnode->node_name);
+		return -1;
+	}
+
+	refer = 1; //如果不是数组则至少循环一次
+	//check refer[数组] 实际union里的成员不可能有refer
+	if(pnode->data.entry_value.count>0)
+	{
+		refer = pnode->data.entry_value.count; //refer == count
+	}
+
+	do
+	{
+		//char[] 要特殊处理
+		if((pnode->data.entry_value.entry_type==SDR_T_CHAR || pnode->data.entry_value.entry_type==SDR_T_UCHAR) && refer>1)
+		{
+			if(pnode->version > sdr_dump_max_version)
+				sdr_dump_max_version = pnode->version;
+
+			print_info(INFO_DISABLE , fp , "%s<entry name=\"%s\" type=\"%s[]\"  size=\"%d\" value=\"" , next_prefix , pnode->node_name ,
+					reverse_label_type(pnode->data.entry_value.entry_type , NULL) , refer);
+			for(i=0; i<refer; i++)
+			{
+				value = *((char *)(data+pnode->data.entry_value.offset+i));
+				if (isprint(value))
+					print_info(INFO_DISABLE , fp , "'%c'" , value);
+				else
+					print_info(INFO_DISABLE , fp , "'0x%x'" , value);
+			}
+			print_info(INFO_NORMAL , fp , "\" />");
+			break;
+		}
+		/*
+		if(pnode->data.entry_value.entry_type==SDR_T_CHAR && pnode->data.entry_value.count>1)
+		{
+			pstr = (char *)calloc(1 , pnode->data.entry_value.count);
+			if(!pstr)
+			{
+				print_info(INFO_ERR , fp , "<%s> failed! calloc string size:%d failed! entry name:%s err:%s" , __FUNCTION__ , pnode->data.entry_value.count ,
+						pnode->node_name , strerror(errno));
+				return -1;
+			}
+			strncpy(pstr , data+pnode->data.entry_value.offset , pnode->data.entry_value.count);
+			print_info(INFO_NORMAL , fp , "%s<entry name=\"%s\" type=\"%s\"  value=\"%s\" />" , next_prefix , pnode->node_name , "char" ,
+					pstr);
+			free(pstr);
+
+			break;
+		}*/
+
+		//所有的都当成数组搞
+		for(i=0; i<refer; i++)
+		{
+			//basic entry
+			if(pnode->data.entry_value.entry_type>=SDR_T_CHAR && pnode->data.entry_value.entry_type<=SDR_T_MAX)
+			{
+				ret = dump_basic_info(pres , pnode->node_name , "" , next_prefix ,
+						pnode , data+pnode->data.entry_value.offset+i*pnode->size , fp);
+				if(ret < 0)
+					return -1;
+			}
+
+			//struct
+			if(pnode->data.entry_value.entry_type == SDR_T_STRUCT)
+			{
+				//找到该结构对应的struct
+				ptmp = fetch_node_by_index(pres , pnode->data.entry_value.type_idx);
+				if(!ptmp)
+				{
+					print_info(INFO_ERR , fp , "<%s>failed! get struct_type of entry failed! entry name:%s" , __FUNCTION__ , pnode->node_name);
+					return -1;
+				}
+
+				//dump struct
+				ret = dump_struct_info(pres , pnode->node_name , ptmp->node_name , next_prefix , ptmp , data+pnode->data.entry_value.offset+i*pnode->size ,
+						fp);
+				if(ret < 0)
+					return -1;
+			}
+
+			//union[实际不可能为union 因为没有邻居select同时存在]
+
+		}
+		break;
+
+	}while(0);
+
+	/***Print Tail*/
+	print_info(INFO_NORMAL , fp , "%s</union>" , prefix);
+	return 0;
+}
+
+/*
+ * dump基础类型数据
+ * @name  该数据在父结构里的成员名 如果为""则是最外层
+ * @type_name 该数据的类型名
+  * @prefix 缩进
+ * @pmain_node 该数据的node
+ * @data 该数据的起始地址
+ * @fp 打印文件句柄
+ * @return:
+ * 0  :  success
+ * -1:  failed
+ */
+static int dump_basic_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , FILE *fp)
+{
+	char *my_type = NULL;
+	char format[32] = {0};
+	char content[SDR_LINE_LEN] = {0};
+	long value = 0; //max basic size
+	my_type = reverse_label_type(pmain_node->data.entry_value.entry_type , format);
+	if(!my_type)
+	{
+		print_info(INFO_ERR , fp , "<%s> failed! reverse_label_type failed! entry name:%s type:%d" , pmain_node->node_name ,
+				pmain_node->data.entry_value.entry_type);
+		return -1;
+	}
+
+	if(pmain_node->version > sdr_dump_max_version)
+		sdr_dump_max_version = pmain_node->version;
+
+	strncpy(content ,  "%s<entry name=\"%s\" type=\"%s\" value=\"" , sizeof(content));
+	strcat(content , format);
+	strcat(content , "\" />");
+	//printf("content is:%s\n" , content);
+
+	memcpy(&value , data , pmain_node->size);
+	//基本类型不会有下一层缩进了
+	print_info(INFO_NORMAL , fp , content , prefix , pmain_node->node_name , my_type , value);
 	return 0;
 }

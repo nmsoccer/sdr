@@ -1691,7 +1691,7 @@ static int gen_entry_h(sdr_conv_env_t *penv , sdr_node_t *pnode , FILE *fp)
 	else //基本类型
 	{
 //		memset(type_name , 0 , sizeof(type_name));
-		start = reverse_label_type(pnode->data.entry_value.entry_type);
+		start = reverse_label_type(pnode->data.entry_value.entry_type , NULL);
 		if(!start)
 		{
 			printf("Gen Entry Failed! Get Entry '%s' Type Failed\n" , pnode->node_name);

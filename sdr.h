@@ -74,10 +74,22 @@ int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name
 int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member , char *next_member , int len);
 
 
+#define SDR_DUMP_SPAN "    " //four space
+/*
+ * 打印结构体的数据信息
+ * @type_name:xml里定义的结构体名
+ * @结构体数据的起始地址
+ * @打印到的目标文件
+ * @return:
+ * 0 : success
+ * -1:failed
+ */
+int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp);
+
 //supported
 int sdr_bin2xml(sdr_data_res_t *pres , char *file_name , FILE *log_fp);
 unsigned int BKDRHash(char *str);
-char *reverse_label_type(char sdr_type);
+char *reverse_label_type(char sdr_type , char *format_buf);
 
 #ifdef __cplusplus
 }

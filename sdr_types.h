@@ -81,6 +81,7 @@ enum SDR_TYPE	//数据类型
 #define INFO_NORMAL	1
 #define INFO_MAIN	2
 #define INFO_ERR	3
+#define INFO_DISABLE 4 //no '\n'
 /************************结构****************/
 /*
  * 一个类型的节点
