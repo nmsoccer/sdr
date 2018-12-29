@@ -174,6 +174,12 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
   * len 下一个成员名缓冲区长度
   * return >=0 下个成员之偏移 -1:错误 -2:无下一个成员
 
+- ```int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp);```  
+  * @pres:成功加载的sdr描述符指针  
+  * @type_name:将要dump的数据结构名.注意是在xml里定义，而不是生成的.h里的结构名  
+  * @struct_data:内存里的结构体起始地址  
+  * @fp:dump出的文件句柄
+  * @return: -1 failed; 0 success
 
 ## 版本兼容
 ### 约束
@@ -379,6 +385,6 @@ protobuf-c是googole protobuffer的C实现 https://github.com/protobuf-c/protobu
 - 所有测试文件均在performance目录下，使用前请装好相关环境
 
 ## More
-[更多内容](https://github.com/nmsoccer/sdr/wiki)
+更多内容:https://github.com/nmsoccer/sdr/wiki
 
 
