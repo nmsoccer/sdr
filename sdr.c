@@ -203,8 +203,8 @@ sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 	}
 
 		//4.4print and release
-	//dump_packed_sym_table(ppacked_sym);
-	//dump_sym_table(psym , sym_list_size);
+	dump_packed_sym_table(ppacked_sym);
+	dump_sym_table(psym , sym_list_size);
 	free(ppacked_sym);
 
 
@@ -248,6 +248,11 @@ sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
  */
 int sdr_free_bin(sdr_data_res_t *pres)
 {
+	sym_table_t *psym = NULL;
+	sym_entry_t *pentry = NULL;
+	sym_entry_t *ptmp = NULL;
+	int i = 0;
+
 	if(!pres)
 		return -1;
 
@@ -256,8 +261,27 @@ int sdr_free_bin(sdr_data_res_t *pres)
 		free(pres->pnode_map);
 
 	if(pres->psym_table)
-		free(pres->psym_table);
+	{
+		psym = pres->psym_table;
 
+		//free each chain-list
+		for(i=0; i<pres->max_node; i++)
+		{
+			if(psym->entry_list[i].index <= 0)
+				continue;
+
+			pentry = psym->entry_list[i].next; //curr free
+			while(pentry)
+			{
+				ptmp = pentry->next;
+				free(pentry);
+				pentry = ptmp;
+			}
+		}
+
+		//free sym_table
+		free(pres->psym_table);
+	}
 	free(pres);
 	return 0;
 }
@@ -423,7 +447,9 @@ int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *typ
 
 	if(ret == 0)
 	{
-		//printf("pack '%s' success! %d -> %d\n" , type_name , sdr_in.index , sdr_out.index);
+#if SDR_PRINT_DEBUG
+		printf("pack '%s' success! %d -> %d\n" , type_name , sdr_in.index , sdr_out.index);
+#endif
 		memset(pout_buff , 0 , 8);
 		memcpy(pout_buff , &version , sizeof(int));
 		memcpy(&pout_buff[4] , &sdr_out.index , sizeof(int));
@@ -509,7 +535,9 @@ int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *t
 _unpack_end:
 	if(ret == 0)
 	{
-		//print_info(INFO_NORMAL , log_fp , "unpack '%s' success! %d->%d", type_name , sdr_in.index , sdr_out.index);
+#if SDR_PRINT_DEBUG
+		print_info(INFO_NORMAL , log_fp , "unpack '%s' success! %d->%d", type_name , sdr_in.index , sdr_out.index);
+#endif
 		return sdr_out.index;
 	}
 	else
@@ -1319,6 +1347,7 @@ static int get_sym_map_index(sdr_data_res_t *pres , char *sym_name)
 {
 	int i;
 	int pos;
+	sym_entry_t *pentry = NULL;
 
 	/***Arg Check*/
 	if(!pres || !sym_name || strlen(sym_name)<=0)
@@ -1331,6 +1360,16 @@ static int get_sym_map_index(sdr_data_res_t *pres , char *sym_name)
 		return pres->psym_table->entry_list[pos].index;
 	}
 
+	//search chain-list
+	pentry = pres->psym_table->entry_list[pos].next;
+	while(pentry)
+	{
+		if(strcmp(pentry->sym_name , sym_name) == 0)
+			return pentry->index;
+
+		pentry = pentry->next;
+	}
+	/*
 	//搜索所有
 	for(i=0; i<pres->max_node; i++)
 	{
@@ -1338,7 +1377,7 @@ static int get_sym_map_index(sdr_data_res_t *pres , char *sym_name)
 		{
 			return pres->psym_table->entry_list[i].index;
 		}
-	}
+	}*/
 
 	return -1;
 }
@@ -1504,6 +1543,8 @@ static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym)
 {
 	int pos = -1;
 	int i = 0;
+	sym_entry_t *pentry = NULL;
+	sym_entry_t *ptmp = NULL;
 
 	/***Arg Check*/
 	if(!ppacked || !psym)
@@ -1519,9 +1560,36 @@ static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym)
 			return -1;
 		}
 
-		//set psym
-		memcpy(psym->entry_list[pos].sym_name , ppacked->entry_list[i].sym_name , SDR_NAME_LEN);
-		psym->entry_list[pos].index = ppacked->entry_list[i].index;
+		//first entry
+		if(psym->entry_list[pos].index <= 0)
+		{
+			memcpy(psym->entry_list[pos].sym_name , ppacked->entry_list[i].sym_name , SDR_NAME_LEN);
+			psym->entry_list[pos].index = ppacked->entry_list[i].index;
+			continue;
+		}
+
+		//search tail of chain-list
+		pentry = &psym->entry_list[pos];
+		while(1)
+		{
+			if(pentry->next == NULL)
+				break;
+
+			pentry = pentry->next;
+		}
+
+		//caloc entry
+		ptmp = (sym_entry_t *)calloc(1 , sizeof(sym_entry_t));
+		if(!ptmp)
+		{
+			printf("<%s> failed! malloc sym_entry:%s failed! err:%s\n" , __FUNCTION__ , ppacked->entry_list[i].sym_name ,
+					strerror(errno));
+			return -1;
+		}
+
+		memcpy(ptmp->sym_name , ppacked->entry_list[i].sym_name , SDR_NAME_LEN);
+		ptmp->index = ppacked->entry_list[i].index;
+		pentry->next = ptmp;
 	}
 
 	psym->count = ppacked->my_list_size;
@@ -1605,8 +1673,14 @@ unsigned int BKDRHash(char *str)
 //dump table
 int dump_sym_table(sym_table_t *psym_table , int max_size)
 {
+
+#if  !SDR_PRINT_DEBUG
+	return 0;
+#endif
+
 	int i = 0;
 	int checked = 0;
+	sym_entry_t *pentry = NULL;
 	printf("<%s> max_size:%d\n" , __FUNCTION__ , max_size);
 	for(i=0; i<max_size&&checked<psym_table->count; i++)
 	{
@@ -1614,9 +1688,18 @@ int dump_sym_table(sym_table_t *psym_table , int max_size)
 			continue;
 
 		//print
-		printf("<%d>:{%d , %s , %lx}\n" , i , psym_table->entry_list[i].index , psym_table->entry_list[i].sym_name ,
+		printf("<%d>:{%d , %s , 0x%lx}\n" , i , psym_table->entry_list[i].index , psym_table->entry_list[i].sym_name ,
 				psym_table->entry_list[i].next);
 		checked++;
+
+		//print chain
+		pentry = psym_table->entry_list[i].next;
+		while(pentry)
+		{
+			printf("<%d>:{%d , %s , 0x%lx}\n" , i , pentry->index , pentry->sym_name ,pentry->next);
+			checked++;
+			pentry = pentry->next;
+		}
 	}
 
 	return 0;
@@ -1625,6 +1708,11 @@ int dump_sym_table(sym_table_t *psym_table , int max_size)
 //dump table
 int dump_packed_sym_table(packed_sym_table_t *ppacked_sym_table)
 {
+
+#if  !SDR_PRINT_DEBUG
+	return 0;
+#endif
+
 	int i = 0;
 	if(!ppacked_sym_table)
 		return -1;

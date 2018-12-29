@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 /************************宏****************/
+#define SDR_PRINT_DEBUG 0
 #define DEFAULT_MAX_NODE_COUNT (21841)	//默认NODE 21841数目
 
 enum SDR_BASE_CLASS	//XML文档基本节点.主节点是构成XML第一层次的节点，不包含SDR_CLASS_ENTRY

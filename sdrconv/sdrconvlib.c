@@ -635,8 +635,8 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 		printf("pack sym table failed!\n");
 		return -1;
 	}
-	//dump_sym_table(pres->psym_table , pres->max_node);
-	//dump_packed_sym_table(ppacked_sym_table);
+	dump_sym_table(pres->psym_table , pres->max_node);
+	dump_packed_sym_table(ppacked_sym_table);
 
 	//free(ppacked_sym_table);
 	/*
@@ -914,6 +914,8 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 	int i;
 	int pos;
 	int ret = -1;
+	sym_entry_t *pentry = NULL;
+	sym_entry_t *ptmp = NULL;
 
 	/***Arg Check*/
 	if(!penv || !sym_name || strlen(sym_name)<=0 || index<=0)
@@ -940,11 +942,22 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 	pos = BKDRHash(sym_name) % penv->max_node;
 	if(strcmp(penv->psym_table->entry_list[pos].sym_name , sym_name) == 0)
 	{
-		sdr_print_info(penv , SDR_INFO_ERR , "Dup Define of %s" , sym_name);
+		sdr_print_info(penv , SDR_INFO_ERR , "<%s> Dup Define of %s" , __FUNCTION__ , sym_name);
 		return -2;
 	}
 
 	//搜索所有
+	pentry = penv->psym_table->entry_list[pos].next;
+	while(pentry)
+	{
+		if(strcmp(pentry->sym_name , sym_name) == 0)
+		{
+			sdr_print_info(penv , SDR_INFO_ERR , "<%s> Dup Define of %s" , __FUNCTION__ , sym_name);
+			return -2;
+		}
+		pentry = pentry->next;
+	}
+	/*
 	for(i=0; i<penv->max_node; i++)
 	{
 		if(strcmp(penv->psym_table->entry_list[i].sym_name , sym_name) == 0)
@@ -952,18 +965,44 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 			sdr_print_info(penv , SDR_INFO_ERR , "Dup Define of %s" , sym_name);
 			return -2;
 		}
-	}
+	}*/
 
 	//2.插入
 	if(penv->psym_table->entry_list[pos].index <= 0)
 	{
 		penv->psym_table->entry_list[pos].index = index;
 		strncpy(penv->psym_table->entry_list[pos].sym_name , sym_name , SDR_NAME_LEN);
+		penv->psym_table->entry_list[pos].next = NULL;
 		penv->psym_table->count++;
 		return 0;
 	}
 
-	//已被占用则从0顺序查找一个
+	//2.1已被占用则找到拉链尾
+	pentry = &penv->psym_table->entry_list[pos];
+	while(1)
+	{
+		if(pentry->next == NULL) //pentry is tail of linked-list
+			break;
+
+		pentry = pentry->next;
+	}
+
+	//2.2new entry
+	ptmp = (sym_entry_t *)calloc(1 , sizeof(sym_entry_t));
+	if(!ptmp)
+	{
+		sdr_print_info(penv , SDR_INFO_ERR , "<%s> Fail calloc of %s. err:%s" , __FUNCTION__ , sym_name , strerror(errno));
+		return -1;
+	}
+	ptmp->index = index;
+	strncpy(ptmp->sym_name , sym_name , SDR_NAME_LEN);
+
+	//2.3 chained
+	pentry->next = ptmp;
+	penv->psym_table->count++;
+
+	/*
+	//2.1已被占用则从0顺序查找一个
 	for(i=0; i<penv->max_node; i++)
 	{
 		if(penv->psym_table->entry_list[i].index <= 0)
@@ -974,8 +1013,9 @@ int insert_sym_table(sdr_conv_env_t *penv , char *sym_name , int index)
 			return 0;
 		}
 	}
-
 	return -1;
+	*/
+	return 0;
 }
 
 /*
@@ -987,6 +1027,7 @@ int fetch_sym_map_index(sdr_conv_env_t *penv , char *sym_name)
 {
 	int i;
 	int pos;
+	sym_entry_t *pentry = NULL;
 
 	/***Arg Check*/
 	if(!penv || !sym_name || strlen(sym_name)<=0)
@@ -999,14 +1040,23 @@ int fetch_sym_map_index(sdr_conv_env_t *penv , char *sym_name)
 		return penv->psym_table->entry_list[pos].index;
 	}
 
-	//搜索所有
+	//查找拉链
+	pentry = penv->psym_table->entry_list[pos].next;
+	while(pentry)
+	{
+		if(strcmp(pentry->sym_name , sym_name) == 0)
+			return pentry->index;
+
+		pentry = pentry->next;
+	}
+	/*
 	for(i=0; i<penv->max_node; i++)
 	{
 		if(strcmp(penv->psym_table->entry_list[i].sym_name , sym_name) == 0)
 		{
 			return penv->psym_table->entry_list[i].index;
 		}
-	}
+	}*/
 
 	return -1;
 }
@@ -1753,6 +1803,7 @@ static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv)
 {
 	sym_table_t *psym_table = NULL;
 	packed_sym_table_t *ppacked_sym_table = NULL;
+	sym_entry_t *pentry = NULL;
 	int i = 0;
 	int checked = 0;
 	if(!penv)
@@ -1763,7 +1814,6 @@ static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv)
 
 	/***Init*/
 	psym_table = penv->psym_table;
-
 
 	//malloc mem
 	ppacked_sym_table = calloc(1 , sizeof(packed_sym_table_t) + psym_table->count*sizeof(packed_sym_entry_t));
@@ -1784,10 +1834,20 @@ static packed_sym_table_t *pack_sym_table(sdr_conv_env_t *penv)
 		ppacked_sym_table->entry_list[checked].pos = i;
 		ppacked_sym_table->entry_list[checked].index = psym_table->entry_list[i].index;
 		memcpy(ppacked_sym_table->entry_list[checked].sym_name , psym_table->entry_list[i].sym_name , SDR_NAME_LEN);
-
-
-		//update
 		checked++;
+
+		//search chain list
+		pentry = psym_table->entry_list[i].next;
+		while(pentry)
+		{
+			ppacked_sym_table->entry_list[checked].pos = i;
+			ppacked_sym_table->entry_list[checked].index = pentry->index;
+			memcpy(ppacked_sym_table->entry_list[checked].sym_name , pentry->sym_name , SDR_NAME_LEN);
+			//update
+			checked++;
+			pentry = pentry->next;
+		}
+
 	}
 
 	ppacked_sym_table->my_list_size = checked;
