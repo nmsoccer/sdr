@@ -378,4 +378,7 @@ protobuf-c是googole protobuffer的C实现 https://github.com/protobuf-c/protobu
 - protobuf 使用c++编写测试案例，由于语言不同，只做参考
 - 所有测试文件均在performance目录下，使用前请装好相关环境
 
+## More
+[更多内容](https://github.com/nmsoccer/sdr/wiki)
+
 
