@@ -670,6 +670,8 @@ int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member ,
 int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp)
 {
 	sdr_node_t *pmain_node;
+	time_t timep;
+	struct tm *ptm;
 
 	/***Arg Check*/
 	if(!pres || !type_name || !struct_data)
@@ -692,8 +694,11 @@ int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data ,
 	}
 
 	/***Print Head*/
+	timep = time(NULL);
+	ptm = localtime(&timep);
 	print_info(INFO_NORMAL , fp , "<?xml version=\"1.0\" encoding=\"utf8\" ?>");
-	print_info(INFO_NORMAL , fp , "<!-- created by sdr on %s %s -->" , __DATE__ , __TIME__);
+	print_info(INFO_NORMAL , fp , "<!-- Created by sdr on %d-%02d-%02d %02d:%02d:%02d  -->" , ptm->tm_year+1900 , ptm->tm_mon+1 , ptm->tm_mday , ptm->tm_hour ,
+			ptm->tm_min , ptm->tm_sec);
 	print_info(INFO_NORMAL , fp , "<!-- @https://github.com/nmsoccer/sdr --> \n");
 
 	/***Hanlde*/
@@ -1947,7 +1952,7 @@ static int dump_struct_info(sdr_data_res_t *pres , char *name , char *type_name 
 					if (isprint(value))
 						print_info(INFO_DISABLE , fp , "'%c'" , value);
 					else
-						print_info(INFO_DISABLE , fp , "'0x%x'" , value);
+						print_info(INFO_DISABLE , fp , "'0x%X'" , value);
 				}
 				print_info(INFO_NORMAL , fp , "\" />");
 				break;
@@ -2139,7 +2144,7 @@ static int dump_union_info(sdr_data_res_t *pres , char *name , char *type_name ,
 				if (isprint(value))
 					print_info(INFO_DISABLE , fp , "'%c'" , value);
 				else
-					print_info(INFO_DISABLE , fp , "'0x%x'" , value);
+					print_info(INFO_DISABLE , fp , "'0x%X'" , value);
 			}
 			print_info(INFO_NORMAL , fp , "\" />");
 			break;
