@@ -53,9 +53,12 @@ _协议数据通过xml文件进行定义，为了解析与协议的规范性，�
     <entry name="name_len" type="char" />
     <entry name="user_name" type="char" count="MAX_NAME_LEN" refer="name_len" desc="姓名"/>
     <entry name="age" type="short" desc="年龄" />
+    <entry name="height" type="float" desc="height" />
     <entry name="skill" type="skill_list" desc="技能列表" />
     <entry name="money" type="long long" version="2" desc="金币" />
     <entry name="gold" type="ulong" version="3" desc="金币" />
+    <entry name="lat" type="double" desc="latitude" />
+    <entry name="lng" type="double" desc="longtitude" />
 </struct>
 
 ```
@@ -225,6 +228,9 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     src_user.sex = 1;
     src_user.name_len = strlen("cs_f**k_suomei");
     strncpy(src_user.user_name , "cs_f**k_suomei" , sizeof(src_user.user_name));
+    src_user.height = 1.73;
+    src_user.lat = 38.65777;
+    src_user.lng = 104.08296;
 
     src_user.skill.skill_count = 2;
     src_user.skill.info_list[0].type = Q_SKILL;
@@ -280,7 +286,7 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
   - 执行结果如下：
     1. 首先初始化src_user和dst_user并打印(虚线上面是src_user 下面是dst_user)：
     ```
-    sex:1 name:cs_f**k_suomei age:32 money:1289 gold:5000
+    sex:1 name:cs_f**k_suomei age:32 height:1.730000 money:1289 gold:5000 lat:38.657770 lng:104.082960
     skill<0> type:1
     qskill:111
     skill<1> type:3
@@ -299,13 +305,13 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     3. 用version=1对src_user序列化并反序列化到dst_user
     ```
     version [1] ==========================
-    pack 'user_info' success! 469 -> 34
-    sdr_pack len:42
-    ready to unpack 'user_info', version:1,length:34
-    unpack 'user_info' success! 34->469
-    sdr_unpack len:469
+    pack 'user_info' success! 489 -> 54
+    sdr_pack len:62
+    ready to unpack 'user_info', version:1,length:54
+    unpack 'user_info' success! 54->489
+    sdr_unpack len:489
     -------------------------------
-    sex:1 name:cs_f**k_suomei age:32 money:0 gold:0
+    ssex:1 name:cs_f**k_suomei age:32 height:1.730000 money:0 gold:0 lat:38.657770 lng:104.082960
     skill<0> type:1
     qskill:111
     skill<1> type:3
@@ -316,13 +322,13 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     4. 用version=2来再次相同操作:
     ```
     version [2] ==========================
-    pack 'user_info' success! 469 -> 42
-    sdr_pack len:50
-    ready to unpack 'user_info', version:2,length:42
-    unpack 'user_info' success! 42->469
-    sdr_unpack len:469
+    pack 'user_info' success! 489 -> 62
+    sdr_pack len:70
+    ready to unpack 'user_info', version:2,length:62
+    unpack 'user_info' success! 62->489
+    sdr_unpack len:489
     -------------------------------
-    sex:1 name:cs_f**k_suomei age:32 money:1289 gold:0
+    sex:1 name:cs_f**k_suomei age:32 height:1.730000 money:1289 gold:0 lat:38.657770 lng:104.082960
     skill<0> type:1
     qskill:111
     skill<1> type:3
@@ -333,13 +339,13 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
     5. 用version=3继续：
     ```
     version [3] ==========================
-    pack 'user_info' success! 469 -> 50
-    sdr_pack len:58
-    ready to unpack 'user_info', version:3,length:50
-    unpack 'user_info' success! 50->469
-    sdr_unpack len:469
+    pack 'user_info' success! 489 -> 70
+    sdr_pack len:78
+    ready to unpack 'user_info', version:3,length:70
+    unpack 'user_info' success! 70->489
+    sdr_unpack len:489
     -------------------------------
-    sex:1 name:cs_f**k_suomei age:32 money:1289 gold:5000
+    sex:1 name:cs_f**k_suomei age:32 height:1.730000 money:1289 gold:5000 lat:38.657770 lng:104.082960
     skill<0> type:1
     qskill:111
     skill<1> type:3
