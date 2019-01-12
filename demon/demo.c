@@ -13,8 +13,7 @@ static int print_user_info(user_info_t *puser)
 		return -1;
 
 	printf("-------------------------------\n");
-	printf("sex:%d name:%s age:%d money:%lld gold:%ld\n" , puser->sex , puser->user_name , puser->age ,
-			puser->money , puser->gold);
+	printf("sex:%d name:%s age:%d height:%f money:%lld gold:%ld lat:%lf lng:%lf\n" , puser->sex , puser->user_name , puser->age , puser->height, puser->money , puser->gold , puser->lat , puser->lng);
 
 	for(i=0; i<puser->skill.skill_count; i++)
 	{
@@ -60,6 +59,9 @@ int main(int argc , char **argv)
     src_user.sex = 1;
     src_user.name_len = strlen("cs_f**k_suomei");
     strncpy(src_user.user_name , "cs_f**k_suomei" , sizeof(src_user.user_name));
+    src_user.height = 1.73;
+    src_user.lat = 38.65777;
+    src_user.lng = 104.08296;
 
     src_user.skill.skill_count = 2;
     src_user.skill.info_list[0].type = Q_SKILL;

@@ -14,7 +14,7 @@
 <union name="skill_data" >
     <entry name="qskill" type="char" id="Q_SKILL" />
     <entry name="wskill" type="uint" id="W_SKILL" />
-    <entry name="eskill" type="uchar" id="E_SKILL" count="12"/>
+    <entry name="eskill" type="char" id="E_SKILL" count="12"/>
     <entry name="rskill" type="short" id="R_SKILL" />
 </union>
 <struct name="skill_info">
@@ -36,7 +36,10 @@
     <entry name="name_len" type="char" />
     <entry name="user_name" type="char" count="MAX_NAME_LEN" refer="name_len" desc="姓名"/>
     <entry name="age" type="short" desc="年龄" />
+    <entry name="height" type="float" desc="height" />
     <entry name="skill" type="skill_list" desc="技能列表" />
-    <entry name="money" type="long long" version="2" desc="金钱" />
+    <entry name="money" type="long long" version="2" desc="金钱" />    
     <entry name="gold" type="ulong" version="3" desc="金币" />
+    <entry name="lat" type="double" desc="latitude" />
+    <entry name="lng" type="double" desc="longtitude" />
 </struct>
