@@ -45,9 +45,12 @@
     <entry name="user_name" type="char" count="MAX_NAME_LEN" refer="name_len" desc="姓名"/>
     <entry name="age" type="short" desc="年龄" />
     <entry name="flags" type="uchar" count="10" />
+    <entry name="height" type="float" desc="height" />
     <entry name="skill" type="skill_list" desc="技能列表" />
     <entry name="money" type="long long" version="2" desc="金钱" />
     <entry name="gold" type="ulong" version="3" desc="金币" />
     <entry name="item_list" type="item" count="MAX_ITEM_COUNT" />
     <entry name="desc" type="char" count="MAX_NAME_LEN" />
+    <entry name="lat" type="double" desc="latitude" />
+    <entry name="lng" type="double" desc="longtitude" />
 </struct>

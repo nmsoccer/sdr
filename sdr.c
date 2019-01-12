@@ -2227,6 +2227,9 @@ static int dump_basic_info(sdr_data_res_t *pres , char *name , char *type_name ,
 	char format[32] = {0};
 	char content[SDR_LINE_LEN] = {0};
 	long value = 0; //max basic size
+	long long ll_value = 0;
+	double double_value = 0;
+	float float_value = 0;
 	my_type = reverse_label_type(pmain_node->data.entry_value.entry_type , format);
 	if(!my_type)
 	{
@@ -2241,10 +2244,38 @@ static int dump_basic_info(sdr_data_res_t *pres , char *name , char *type_name ,
 	strncpy(content ,  "%s<entry name=\"%s\" type=\"%s\" value=\"" , sizeof(content));
 	strcat(content , format);
 	strcat(content , "\" />");
-	//printf("content is:%s\n" , content);
 
-	memcpy(&value , data , pmain_node->size);
+
+	do
+	{
+		if(pmain_node->data.entry_value.entry_type == SDR_T_FLOAT)
+		{
+			memcpy(&float_value , data , pmain_node->size);
+			print_info(INFO_NORMAL , fp , content , prefix , pmain_node->node_name , my_type , float_value);
+			break;
+		}
+
+		if(pmain_node->data.entry_value.entry_type == SDR_T_DOUBLE)
+		{
+			memcpy(&double_value , data , pmain_node->size);
+			print_info(INFO_NORMAL , fp , content , prefix , pmain_node->node_name , my_type , double_value);
+			break;
+		}
+
+		if(pmain_node->data.entry_value.entry_type == SDR_T_LONGLONG)
+		{
+			memcpy(&ll_value , data , pmain_node->size);
+			print_info(INFO_NORMAL , fp , content , prefix , pmain_node->node_name , my_type , ll_value);
+			break;
+		}
+
+		//other
+		memcpy(&value , data , pmain_node->size);
+		print_info(INFO_NORMAL , fp , content , prefix , pmain_node->node_name , my_type , value);
+		break;
+	}while(0);
+
 	//基本类型不会有下一层缩进了
-	print_info(INFO_NORMAL , fp , content , prefix , pmain_node->node_name , my_type , value);
+	//print_info(INFO_NORMAL , fp , content , prefix , pmain_node->node_name , my_type , value);
 	return 0;
 }

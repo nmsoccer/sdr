@@ -15,8 +15,8 @@ static int print_user_info(user_info_t *puser)
 		return -1;
 
 	printf("-------------------------------\n");
-	printf("sex:%d name:%s age:%d money:%lld gold:%ld\n" , puser->sex , puser->user_name , puser->age ,
-			puser->money , puser->gold);
+        printf("sex:%d name:%s age:%d money:%lld gold:%ld height:%f , lat:%lf , lng:%lf\n" , puser->sex , puser->user_name , puser->age ,
+                        puser->money , puser->gold , puser->height , puser->lat , puser->lng);
 
         printf("flags:\n");
         for(i=0; i<sizeof(puser->flags); i++)

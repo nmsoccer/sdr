@@ -14,8 +14,8 @@ static int print_user_info(user_info_t *puser)
 		return -1;
 
 	printf("-------------------------------\n");
-	printf("sex:%d name:%s age:%d money:%lld gold:%ld\n" , puser->sex , puser->user_name , puser->age ,
-			puser->money , puser->gold);
+	printf("sex:%d name:%s age:%d money:%lld gold:%ld height:%f , lat:%lf , lng:%lf\n" , puser->sex , puser->user_name , puser->age ,
+			puser->money , puser->gold , puser->height , puser->lat , puser->lng);
 
         printf("flags:\n");
         for(i=0; i<sizeof(puser->flags); i++)
@@ -50,9 +50,9 @@ static int print_user_info(user_info_t *puser)
 
 int main(int argc , char **argv)
 {
-	sdr_data_res_t *pres;
-	char buff[MAX_BUFF_LEN] = {0};
-	user_info_t src_user;
+    sdr_data_res_t *pres;
+    char buff[MAX_BUFF_LEN] = {0};
+    user_info_t src_user;
     user_info_t dst_user;
     int len = 0;
     int version = -1;
@@ -76,6 +76,9 @@ int main(int argc , char **argv)
     src_user.sex = 1;
     src_user.name_len = strlen("cs_f**k_suomei");
     strncpy(src_user.user_name , "cs_f**k_suomei" , sizeof(src_user.user_name));
+    src_user.height = 1.73;
+    src_user.lat = 38.65777;
+    src_user.lng = 104.08296;
 
     src_user.flags[0] = 177;
     src_user.flags[1] = 3;
@@ -108,7 +111,27 @@ int main(int argc , char **argv)
     	return -1;
     }
 
+    printf("2) pack&unpacked==========================\n\n");
     //test pack
+    ret = sdr_pack(pres , buff , (char *)&src_user , "user_info" , 3 , NULL);
+    if(!ret)
+    {
+      printf("pack failed!\n");
+      return -1;
+    }
+    printf("packed:%d\n" , ret);
+
+    //test unpack
+    ret = sdr_unpack(pres, (char *)&dst_user, buff, "user_info", NULL);
+    if(!ret)
+    {
+      printf("unpack failed!\n");
+      return -1;
+    }
+    printf("unpacked:%d\n" , ret);
+    print_user_info(&src_user);
+    print_user_info(&dst_user);
+
 
     //test dump
     ret = sdr_dump_struct(pres , "user_info" , (char *)&src_user , fp);
