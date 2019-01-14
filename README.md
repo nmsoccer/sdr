@@ -140,22 +140,27 @@ _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后�
   * log_fp 提供给应用程序的日志接口 如果不需要设置为NULL
   * return 成功则返回协议描述指针sdr_data_res_t*; 失败返回NULL
   
-- ```int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , FILE *log_fp);```
+- ```int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , char net_byte , FILE *log_fp);```
   * 序列化数据结构(版本号将被带入序列化的二进制数据)
   * pres 通过sdr_load_bin成功返回的协议描述符句柄
   * pout_buff 序列化数据后存储的地址(需自己定义足够长度)
   * pin_buff  被序列化的数据地址
   * type_name 在xml里定义的数据结构名
   * version   序列化当前数据的版本号（version>该版本号的成员将不会被序列化）
+  * net_byte  是否进行网络字节转换(0:不转换 1:转换）
+    * 如果进行网络字节转换，则协议里的浮点成员不会转换而直接透传。所以建议进行网络序转换的协议不带浮点成员
+    * 如果确保打解包双方都是小端，则建议不进行转换，可以提高效率同时兼容浮点数
+    * 压缩和解压时的网络序参数需保持一致
   * log_fp    应用程序传入的日志句柄 or NULL
   * return    成功则返回序列化之后的数据长度; 失败返回-1
   
-- ```int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , FILE *log_fp);```  
+- ```int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , char net_byte , FILE *log_fp);```  
   * 反序列化二进制数据(版本号已经被打入序列化的二进制数据,version>二进制数据版本号的成员将被跳过)
   * pres 通过sdr_load_bin成功返回的协议描述符句柄
   * pout_buff 反序列化后的数据结构地址
   * pin_buff  被反序列化的二进制数据地址
   * type_name 在xml里定义的数据结构名
+  * net_byte  是否需要从网络序解包
   * log_fp    应用程序传入的日志句柄 or NULL
   * return    成功则返回反序列化之后的数据长度; 失败返回-1
 
