@@ -113,7 +113,7 @@ int main(int argc , char **argv)
 
     printf("2) pack&unpacked==========================\n\n");
     //test pack
-    ret = sdr_pack(pres , buff , (char *)&src_user , "user_info" , 3 , NULL);
+    ret = sdr_pack(pres , buff , (char *)&src_user , "user_info" , 3 , 0 , NULL);
     if(!ret)
     {
       printf("pack failed!\n");
@@ -122,7 +122,7 @@ int main(int argc , char **argv)
     printf("packed:%d\n" , ret);
 
     //test unpack
-    ret = sdr_unpack(pres, (char *)&dst_user, buff, "user_info", NULL);
+    ret = sdr_unpack(pres, (char *)&dst_user, buff, "user_info", 0 , NULL);
     if(!ret)
     {
       printf("unpack failed!\n");

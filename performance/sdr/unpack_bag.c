@@ -61,7 +61,7 @@ int main(int argc , char **argv)
 
   for(i=0; i<MAX_HANDLE_TIMES; i++)
   {
-    len = sdr_unpack(pres, (char *)&mybag, buff, "bag_all", NULL);
+    len = sdr_unpack(pres, (char *)&mybag, buff, "bag_all", 0 , NULL);
     if(len <= 0)
     {
       printf("unpack failed! i:%d\n" , i);

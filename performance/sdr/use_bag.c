@@ -76,7 +76,7 @@ int main(int argc , char **argv)
 
   for(i=0; i<MAX_HANDLE_TIMES; i++)
   {
-    len = sdr_pack(pres, buff, (char *)&mybag, "bag_all", 0, NULL);
+    len = sdr_pack(pres, buff, (char *)&mybag, "bag_all", 0, 0 , NULL);
     if(len <= 0)
     {
       printf("pakced failed! i:%d\n" , i);
@@ -95,7 +95,7 @@ int main(int argc , char **argv)
   gettimeofday(&tv , NULL);
   printf("starts:%ld:%ld\n" , tv.tv_sec , tv.tv_usec);
   
-  len = sdr_unpack(pres, (char *)&otherbag , buff, "bag_all", NULL);
+  len = sdr_unpack(pres, (char *)&otherbag , buff, "bag_all", 0 , NULL);
   printf("unpacked_len:%d\n" , len);
 
   gettimeofday(&tv , NULL);

@@ -24,10 +24,12 @@ static int gen_struct_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp);
 static int gen_union_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp);
 static int gen_entry_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp);
 
-static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp);
-static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp , int select_id);
-static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp);
-static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp , int select_id);
+static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , char net_byte , FILE *log_fp);
+static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , char net_byte , FILE *log_fp , int select_id);
+static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , char net_byte , FILE *log_fp);
+static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , char net_byte , FILE *log_fp , int select_id);
+static int pack_hton(char type , char *out , char *in , int size , FILE *fp);
+static int unpack_ntoh(char type , char *out , char *in , int size , FILE *fp);
 
 static int get_sym_map_index(sdr_data_res_t *pres , char *sym_name);
 static int get_base_type_size(char type);
@@ -379,10 +381,13 @@ int sdr_bin2xml(sdr_data_res_t *pres , char *file_name , FILE *log_fp)
  * 只打包版本号小于version的数据
  * @type_name 类型名
  * out_buff前八个字节为两个整形 分别是version+length
+ * net_byte:转换成网络序(0:直接打包 1:转成网络序)
+ *   若打开网络字节转换 浮点型将透传字节，不进行转换
+ *   若可以保证打解包双方大小端一致可以关闭网络转换以提高性能，同时兼容浮点型
  * return:>=0压缩后的数据
  * else:错误
  */
-int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , FILE *log_fp)
+int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , char net_byte , FILE *log_fp)
 {
 	sdr_node_t *pnode;
 	sdr_buff_info_t sdr_in;
@@ -438,13 +443,13 @@ int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *typ
 	{
 		if(pnode->class == SDR_CLASS_STRUCT)
 		{
-			ret = pack_struct_node(pres , pnode , &sdr_out , &sdr_in , version , log_fp);
+			ret = pack_struct_node(pres , pnode , &sdr_out , &sdr_in , version , net_byte , log_fp);
 			break;
 		}
 
 		if(pnode->class == SDR_CLASS_UNION)
 		{
-			ret = pack_union_node(pres , pnode , &sdr_out , &sdr_in , version , log_fp , -1);
+			ret = pack_union_node(pres , pnode , &sdr_out , &sdr_in , version , net_byte , log_fp , -1);
 			break;
 		}
 
@@ -472,10 +477,11 @@ int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *typ
  * 只解包版本号小于version的数据
  * @type_name 类型名
  * in_buff前八个字节为两个整形 分别是version+length
+ * net_byte:从网络序解包(0:直接解包 1:从网络序解包)
  * return:>=0解压缩后的数据
  * else:错误
  */
-int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , FILE *log_fp)
+int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , char net_byte , FILE *log_fp)
 {
 	sdr_node_t *pnode;
 	sdr_buff_info_t sdr_in;
@@ -525,13 +531,13 @@ int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *t
 	{
 		if(pnode->class == SDR_CLASS_STRUCT)
 		{
-			ret = unpack_struct_node(pres , pnode , &sdr_out , &sdr_in , version , log_fp);
+			ret = unpack_struct_node(pres , pnode , &sdr_out , &sdr_in , version , net_byte , log_fp);
 			break;
 		}
 
 		if(pnode->class == SDR_CLASS_UNION)
 		{
-			ret = unpack_union_node(pres , pnode , &sdr_out , &sdr_in , version , log_fp , -1);
+			ret = unpack_union_node(pres , pnode , &sdr_out , &sdr_in , version , net_byte , log_fp , -1);
 			break;
 		}
 
@@ -945,7 +951,7 @@ static int gen_entry_xml(sdr_data_res_t *pres , sdr_node_t *pnode , FILE *fp)
 }
 
 
-static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp)
+static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , char net_byte , FILE *log_fp)
 {
 	sdr_node_t *pentry_node;
 	sdr_node_t *ptmp_node;
@@ -1020,7 +1026,17 @@ static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_
 			//普通类型，则直接计算即可
 			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
-				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				if(net_byte == 0) //直传
+					memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				else  //网络字节转换
+				{
+					if (pack_hton(pentry_node->data.entry_value.entry_type , &pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size , log_fp) < 0)
+					{
+						print_info(INFO_ERR , log_fp , "<%s> failed! pack_hton meets an error! name:%s type:%s size:%s" , __FUNCTION__ ,
+								pentry_node->node_name , pentry_node->data.entry_value.entry_type , pentry_node->size);
+						return -1;
+					}
+				}
 				pin->index += pentry_node->size;
 				pout->index += pentry_node->size;
 				continue;
@@ -1030,7 +1046,7 @@ static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_
 			if(pentry_node->data.entry_value.entry_type == SDR_T_STRUCT)
 			{
 				ptmp_node = (sdr_node_t *)&pres->pnode_map->node_list[pentry_node->data.entry_value.type_idx];
-				ret = pack_struct_node(pres , ptmp_node , pout , pin , version , log_fp);
+				ret = pack_struct_node(pres , ptmp_node , pout , pin , version , net_byte , log_fp);
 				if(ret < 0)
 					return -1;
 
@@ -1047,7 +1063,7 @@ static int pack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_
 
 				//打包union
 				ptmp_node = (sdr_node_t *)&pres->pnode_map->node_list[pentry_node->data.entry_value.type_idx];
-				ret = pack_union_node(pres , ptmp_node , pout , pin , version , log_fp , selected_id);
+				ret = pack_union_node(pres , ptmp_node , pout , pin , version , net_byte , log_fp , selected_id);
 				if(ret < 0)
 					return -1;
 
@@ -1071,7 +1087,7 @@ _next_sibling:
 	pin->index = in_start_index + pnode->size;	//指向下一个起始流
 	return 0;
 }
-static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp , int select_id)
+static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , char net_byte , FILE *log_fp , int select_id)
 {
 	sdr_node_t *pentry_node;
 	sdr_node_t *ptmp_node;
@@ -1144,7 +1160,17 @@ static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_i
 			//普通类型，则直接计算即可
 			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
-				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				if(net_byte == 0) //直传
+					memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				else  //网络字节转换
+				{
+					if (pack_hton(pentry_node->data.entry_value.entry_type , &pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size , log_fp) < 0)
+					{
+						print_info(INFO_ERR , log_fp , "<%s> failed! pack_hton meets an error! name:%s type:%s size:%s" , __FUNCTION__ ,
+								pentry_node->node_name , pentry_node->data.entry_value.entry_type , pentry_node->size);
+						return -1;
+					}
+				}
 				pin->index += pentry_node->size;
 				pout->index += pentry_node->size;
 				continue;
@@ -1154,7 +1180,7 @@ static int pack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_i
 			if(pentry_node->data.entry_value.entry_type == SDR_T_STRUCT)
 			{
 				ptmp_node = (sdr_node_t *)&pres->pnode_map->node_list[pentry_node->data.entry_value.type_idx];
-				ret = pack_struct_node(pres , ptmp_node , pout , pin , version , log_fp);
+				ret = pack_struct_node(pres , ptmp_node , pout , pin , version , net_byte , log_fp);
 				if(ret < 0)
 					return -1;
 
@@ -1174,7 +1200,145 @@ _end_pack:
 	return 0;
 }
 
-static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp)
+//打包时将成员打为网络序
+//float & double 透传
+// arg no check
+//return: -1 failed 0 success
+static int pack_hton(char type , char *out , char *in , int size , FILE *fp)
+{
+	//char
+	if(type==SDR_T_CHAR || type==SDR_T_UCHAR)
+	{
+		*out = *in;
+		return 0;
+	}
+
+	//float & double
+	if(type==SDR_T_FLOAT || type==SDR_T_DOUBLE)
+	{
+		memcpy(out , in , size);
+		return 0;
+	}
+
+	//short
+	if(type==SDR_T_SHORT || type==SDR_T_USHORT)
+	{
+		*((unsigned short *)out) = htons(*((unsigned short *)in));
+		return 0;
+	}
+
+	//int
+	if(type==SDR_T_INT || type==SDR_T_UINT)
+	{
+		*((unsigned int *)out) = htonl(*((unsigned int *)in));
+		return 0;
+	}
+
+	//long
+	if(type==SDR_T_LONG || SDR_T_ULONG)
+	{
+		if(size == 4) //32bit
+		{
+			*((unsigned int *)out) = htonl(*((unsigned int *)in));
+			return 0;
+		}
+		else if(size == 8) //64bit
+		{
+			*((unsigned int*)(out+4)) = htonl(*((unsigned int *)in));
+			*((unsigned int*)out) = htonl(*((unsigned int *)(in+4)));
+			return 0;
+		}
+		else
+		{
+			print_info(INFO_ERR , fp , "<%s> failed! long size %d illegal!" , __FUNCTION__ , size);
+			return -1;
+		}
+	}
+
+	//long long
+	if(type==SDR_T_LONGLONG)
+	{
+		*((unsigned int*)(out+4)) = htonl(*((unsigned int *)in));
+		*((unsigned int*)out) = htonl(*((unsigned int *)(in+4)));
+		return 0;
+	}
+
+	//err:
+	print_info(INFO_ERR , fp , "<%s> failed! type:%d size %d illegal!" , __FUNCTION__ , type , size);
+	return -1;
+}
+
+//解包时将网络序解为主机
+// arg no check
+//return: -1 failed 0 success
+static int unpack_ntoh(char type , char *out , char *in , int size , FILE *fp)
+{
+	long long host;
+	long long net;
+	//char
+	if(type==SDR_T_CHAR || type==SDR_T_UCHAR)
+	{
+		*out = *in;
+		return 0;
+	}
+
+	//float & double
+	if(type==SDR_T_FLOAT || type==SDR_T_DOUBLE)
+	{
+		memcpy(out , in , size);
+		return 0;
+	}
+
+	//short
+	if(type==SDR_T_SHORT || type==SDR_T_USHORT)
+	{
+		*((unsigned short *)out) = ntohs(*((unsigned short *)in));
+		return 0;
+	}
+
+	//int
+	if(type==SDR_T_INT || type==SDR_T_UINT)
+	{
+		*((unsigned int *)out) = ntohl(*((unsigned int *)in));
+		return 0;
+	}
+
+	//long
+	if(type==SDR_T_LONG || SDR_T_ULONG)
+	{
+		if(size == 4) //32bit
+		{
+			*((unsigned int *)out) = ntohl(*((unsigned int *)in));
+			return 0;
+		}
+		else if(size == 8) //64bit
+		{
+			*((unsigned int*)(out+4)) = ntohl(*((unsigned int *)in));
+			*((unsigned int*)out) = ntohl(*((unsigned int *)(in+4)));
+			return 0;
+		}
+		else
+		{
+			print_info(INFO_ERR , fp , "<%s> failed! long size %d illegal!" , __FUNCTION__ , size);
+			return -1;
+		}
+	}
+
+	//long long
+	if(type==SDR_T_LONGLONG)
+	{
+		*((unsigned int*)(out+4)) = htonl(*((unsigned int *)in));
+		*((unsigned int*)out) = htonl(*((unsigned int *)(in+4)));
+		return 0;
+	}
+
+	//err:
+	print_info(INFO_ERR , fp , "<%s> failed! type:%d size %d illegal!" , __FUNCTION__ , type , size);
+	return -1;
+}
+
+static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version ,
+		char net_byte , FILE *log_fp)
 {
 	sdr_node_t *pentry_node;
 	sdr_node_t *ptmp_node;
@@ -1249,7 +1413,17 @@ static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buf
 			//普通类型，则直接计算即可
 			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
-				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				if(net_byte == 0)//直传
+					memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				else  //网络字节转换
+				{
+					if (unpack_ntoh(pentry_node->data.entry_value.entry_type , &pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size , log_fp) < 0)
+					{
+						print_info(INFO_ERR , log_fp , "<%s> failed! unpack_ntoh meets an error! name:%s type:%s size:%s" , __FUNCTION__ ,
+								pentry_node->node_name , pentry_node->data.entry_value.entry_type , pentry_node->size);
+						return -1;
+					}
+				}
 				pin->index += pentry_node->size;
 				if(pin->index > pin->length)	//已经超过了数据流长度
 				{
@@ -1264,7 +1438,7 @@ static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buf
 			if(pentry_node->data.entry_value.entry_type == SDR_T_STRUCT)
 			{
 				ptmp_node = (sdr_node_t *)&pres->pnode_map->node_list[pentry_node->data.entry_value.type_idx];
-				ret = unpack_struct_node(pres , ptmp_node , pout , pin , version , log_fp);
+				ret = unpack_struct_node(pres , ptmp_node , pout , pin , version , net_byte , log_fp);
 				if(ret < 0)
 					return -1;
 
@@ -1281,7 +1455,7 @@ static int unpack_struct_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buf
 
 				//解压union
 				ptmp_node = (sdr_node_t *)&pres->pnode_map->node_list[pentry_node->data.entry_value.type_idx];
-				ret = unpack_union_node(pres , ptmp_node , pout , pin , version , log_fp , selected_id);
+				ret = unpack_union_node(pres , ptmp_node , pout , pin , version , net_byte , log_fp , selected_id);
 				if(ret < 0)
 					return -1;
 
@@ -1306,7 +1480,8 @@ _next_sibling:
 	return 0;
 }
 
-static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version , FILE *log_fp , int select_id)
+static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff_info_t *pout , sdr_buff_info_t *pin , int version ,
+		char net_byte , FILE *log_fp , int select_id)
 {
 	sdr_node_t *pentry_node;
 	sdr_node_t *ptmp_node;
@@ -1379,7 +1554,17 @@ static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff
 			//普通类型，则直接计算即可
 			if(pentry_node->data.entry_value.entry_type>=SDR_T_CHAR && pentry_node->data.entry_value.entry_type<=SDR_T_MAX)
 			{
-				memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				if(net_byte == 0) //直传
+					memcpy(&pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size);
+				else  //网络字节转换
+				{
+					if (unpack_ntoh(pentry_node->data.entry_value.entry_type , &pout->src[pout->index] , &pin->src[pin->index] , pentry_node->size , log_fp) < 0)
+					{
+						print_info(INFO_ERR , log_fp , "<%s> failed! unpack_ntoh meets an error! name:%s type:%s size:%s" , __FUNCTION__ ,
+								pentry_node->node_name , pentry_node->data.entry_value.entry_type , pentry_node->size);
+						return -1;
+					}
+				}
 				pin->index += pentry_node->size;
 				if(pin->index > pin->length)	//已经超过了数据流长度
 				{
@@ -1394,7 +1579,7 @@ static int unpack_union_node(sdr_data_res_t *pres , sdr_node_t *pnode , sdr_buff
 			if(pentry_node->data.entry_value.entry_type == SDR_T_STRUCT)
 			{
 				ptmp_node = (sdr_node_t *)&pres->pnode_map->node_list[pentry_node->data.entry_value.type_idx];
-				ret = unpack_struct_node(pres , ptmp_node , pout , pin , version , log_fp);
+				ret = unpack_struct_node(pres , ptmp_node , pout , pin , version , net_byte , log_fp);
 				if(ret < 0)
 					return -1;
 

@@ -33,20 +33,24 @@ int sdr_free_bin(sdr_data_res_t *pres);
  * 只打包版本号小于version的数据
  * @type_name 类型名
  * out_buff前八个字节为两个整形 分别是version+length
+ * net_byte:打包成网络序(0:直接打包 1:转成网络序)
+ *   若打开网络字节转换 浮点型将透传字节，不进行转换
+ *   若可以保证打解包双方大小端一致可以关闭网络转换以提高性能，同时兼容浮点型
  * return:>=0压缩后的数据
  * else:错误
  */
-int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , FILE *log_fp);
+int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , char net_byte , FILE *log_fp);
 
 /*
  * 解包in_buff数据到out_buff
  * 只解包版本号小于version的数据
  * @type_name 类型名
  * in_buff前八个字节为两个整形 分别是version+length
+ * net_byte:从网络序解包(0:直接解包 1:从网络序解包)
  * return:>=0解压缩后的数据
  * else:错误
  */
-int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , FILE *log_fp);
+int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , char net_byte , FILE *log_fp);
 
 
 //扩展接口 appended on 2017-02-25

@@ -90,7 +90,7 @@ int main(int argc , char **argv)
     	memset(&dst_user , 0 , sizeof(dst_user));
 
     	//pack
-    	len = sdr_pack(pres , buff , (char *)&src_user , "user_info" , version , NULL);
+    	len = sdr_pack(pres , buff , (char *)&src_user , "user_info" , version , 0 , NULL);
     	if(len < 0)
     	{
     		printf("sdr_pack failed!\n");
@@ -99,7 +99,7 @@ int main(int argc , char **argv)
     	printf("sdr_pack len:%d\n" , len);
 
     	//unpack
-    	len = sdr_unpack(pres , (char *)&dst_user , buff , "user_info" , NULL);
+    	len = sdr_unpack(pres , (char *)&dst_user , buff , "user_info" , 0 , NULL);
     	if(len < 0)
     	{
     		printf("sdr_unpack failed!\n");

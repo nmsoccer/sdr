@@ -95,7 +95,7 @@ int main(int argc , char **argv)
     printf("read %s success! bytes:%d\n" , BIN_FILE , ret);
 
     //unpack
-    len = sdr_unpack(pres , (char *)&dst_user , buff , "user_info" , NULL);
+    len = sdr_unpack(pres , (char *)&dst_user , buff , "user_info" , 0 , NULL);
     if(len < 0)
     {
         printf("sdr_unpack failed!\n");
