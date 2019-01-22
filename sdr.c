@@ -42,7 +42,7 @@ static int unpack_to_sym_table(packed_sym_table_t *ppacked , sym_table_t *psym);
 static int dump_struct_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , FILE *fp);
 static int dump_union_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , int my_select , FILE *fp);
 static int dump_basic_info(sdr_data_res_t *pres , char *name , char *type_name , char *prefix , sdr_node_t *pmain_node , char *data , FILE *fp);
-
+static unsigned short check_sum(unsigned char *array , int len);
 
 /************GLOBAL FUNCTION*/
 /*
@@ -56,7 +56,7 @@ static int dump_basic_info(sdr_data_res_t *pres , char *name , char *type_name ,
 		return NULL; \
 	}while(0)
 
-sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
+API sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 {
 	int fd;
 	sdr_data_res_t *pres = NULL;
@@ -71,6 +71,8 @@ sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 	int my_list_size = 0;
 	int size;
 	int ret;
+	unsigned short file_sum = 0;
+	unsigned short mem_sum = 0;
 
 	/***Arg Check*/
 	if(!file_name || strlen(file_name)<=0)
@@ -249,14 +251,38 @@ sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp)
 	pres->pnode_map = (sdr_node_map_t *)start;
 	pres->psym_table = (sym_table_t *)(start + sizeof(sdr_node_map_t) + map_count*sizeof(sdr_node_t));*/
 
-	print_info(INFO_NORMAL , log_fp , "max node:%d, map_count:%d , entry_size:%d entry_count:%d" , max_node , pres->pnode_map->count , sym_list_size , pres->psym_table->count);
+	//5.check sum value
+	//5.1 read
+	size = sizeof(unsigned short);
+	ret = read(fd , &file_sum ,  size);
+	if(ret != size)
+	{
+		print_info(INFO_ERR , log_fp , "<%s>fail! read checksum value failed! target:%d read:%d" , __FUNCTION__ , size , ret);
+		SDR_LOAD_BIN_FAIL;
+	}
+
+	//5.2 calc mem
+	mem_sum = check_sum_sdr(pres , &ret);
+	if(ret < 0)
+	{
+		print_info(INFO_ERR , log_fp , "<%s>fail! calc checksum value failed! ret:%d" , __FUNCTION__ , ret);
+		SDR_LOAD_BIN_FAIL;
+	}
+	if(mem_sum != file_sum)
+	{
+		print_info(INFO_ERR , log_fp , "<%s>fail! checksum value failed! FileSum:%d MemSum:%d" , __FUNCTION__ , file_sum , mem_sum);
+		SDR_LOAD_BIN_FAIL;
+	}
+
+	print_info(INFO_NORMAL , log_fp , "%s max node:%d, map_count:%d , entry_size:%d entry_count:%d checksum:%d" , __FUNCTION__ , max_node , pres->pnode_map->count , sym_list_size , pres->psym_table->count ,
+			mem_sum);
 	return pres;
 }
 
 /*
  * 释放加载入内存的sdr文件
  */
-int sdr_free_bin(sdr_data_res_t *pres)
+API int sdr_free_bin(sdr_data_res_t *pres)
 {
 	sym_table_t *psym = NULL;
 	sym_entry_t *pentry = NULL;
@@ -299,7 +325,7 @@ int sdr_free_bin(sdr_data_res_t *pres)
 /*
  * 打印出bin文件内容为xml格式
  */
-int sdr_bin2xml(sdr_data_res_t *pres , char *file_name , FILE *log_fp)
+NO_API int sdr_bin2xml(sdr_data_res_t *pres , char *file_name , FILE *log_fp)
 {
 	FILE *fp;
 	sdr_node_t *pnode;
@@ -387,7 +413,7 @@ int sdr_bin2xml(sdr_data_res_t *pres , char *file_name , FILE *log_fp)
  * return:>=0压缩后的数据
  * else:错误
  */
-int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , char net_byte , FILE *log_fp)
+API int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , char net_byte , FILE *log_fp)
 {
 	sdr_node_t *pnode;
 	sdr_buff_info_t sdr_in;
@@ -481,7 +507,7 @@ int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *typ
  * return:>=0解压缩后的数据
  * else:错误
  */
-int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , char net_byte , FILE *log_fp)
+API int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , char net_byte , FILE *log_fp)
 {
 	sdr_node_t *pnode;
 	sdr_buff_info_t sdr_in;
@@ -571,7 +597,7 @@ _unpack_end:
  * -4:找不到成员
  * -5:成员错误
 */
-int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name)
+API int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name)
 {
 	sdr_node_t *pnode = NULL;
 	int iValue = -1;
@@ -608,7 +634,7 @@ int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name
  * -7:没有下一个成员
  * -8:下一个成员错误
  */
-int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member , char *next_member , int len)
+API int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member , char *next_member , int len)
 {
 	sdr_node_t *pmain_node = NULL;
 	sdr_node_t *pnode = NULL;
@@ -673,7 +699,7 @@ int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member ,
  * 0 : success
  * -1:failed
  */
-int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp)
+API int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp)
 {
 	sdr_node_t *pmain_node;
 	time_t timep;
@@ -1961,11 +1987,47 @@ char *reverse_label_type(char sdr_type , char *format_buff)
 }
 
 
+/*
+ * check sum
+ */
+static unsigned short check_sum(unsigned char *array , int len)
+{
+	unsigned int sum = 0;
+	unsigned short value = 0;
+	int i = 0;
+
+	//calc each two bytes
+	while(1)
+	{
+		if(i+2>len)
+			break;
+
+		sum = sum + ((array[i]<<8) + array[i+1]);
+		i += 2;
+	}
+
+	//last byte
+	if(i<len)
+	{
+		sum = sum + (array[len-1]<<8);
+	}
+
+	//low 16bit + high 16bit < 0xffff
+	do
+	{
+		sum = (sum & 0x0000ffff) + (sum >> 16);
+	}while(sum > 0xffff);
+
+	//~
+	value = sum & 0x0000ffff;
+	value =  ~value;
+	return value;
+}
 
 
 
 // BKDR Hash Function
-unsigned int BKDRHash(char *str)
+NO_API unsigned int BKDRHash(char *str)
 {
     unsigned int seed = 131; // 31 131 1313 13131 131313 etc..
     unsigned int hash = 0;
@@ -1979,7 +2041,7 @@ unsigned int BKDRHash(char *str)
 }
 
 //dump table
-int dump_sym_table(sym_table_t *psym_table , int max_size)
+NO_API int dump_sym_table(sym_table_t *psym_table , int max_size)
 {
 
 #if  !SDR_PRINT_DEBUG
@@ -2014,7 +2076,7 @@ int dump_sym_table(sym_table_t *psym_table , int max_size)
 }
 
 //dump table
-int dump_packed_sym_table(packed_sym_table_t *ppacked_sym_table)
+NO_API int dump_packed_sym_table(packed_sym_table_t *ppacked_sym_table)
 {
 
 #if  !SDR_PRINT_DEBUG
@@ -2034,6 +2096,66 @@ int dump_packed_sym_table(packed_sym_table_t *ppacked_sym_table)
 	}
 
 	return 0;
+}
+
+/*check sum
+*计算sdr_data_res_t的总和校验值
+*max_node和每个sdr_node_t.class
+*@result: <0 error 0:success
+*@return: checksum result
+*/
+NO_API unsigned short check_sum_sdr(sdr_data_res_t *pres , int *result)
+{
+	unsigned char buff[1024] = {0};
+	unsigned char *byte_array = buff; //default
+	char flag = 0;
+
+	unsigned int sum = 0;
+	int i = 0;
+	int index = 0;
+	int len = 0;
+
+	/***Arg Check*/
+	if(!result)
+		return 0;
+
+	if(!pres)
+	{
+		*result = -1;
+		return 0;
+	}
+
+	/***Calc Len*/
+	len = sizeof(int) + pres->pnode_map->count * sizeof(char);
+	if(len > sizeof(buff))
+	{
+		byte_array = (unsigned char *)calloc(len , 1);
+		if(!byte_array)
+		{
+			*result = -2;
+			return 0;
+		}
+		flag = 1;
+	}
+
+	/***Fill Array*/
+	index = 0;
+	memcpy(&byte_array[index] , &pres->max_node , sizeof(pres->max_node));
+	index += sizeof(pres->max_node);
+
+	for(i=0; i<pres->pnode_map->count; i++,index++)
+	{
+		byte_array[index] = pres->pnode_map->node_list[i].class;
+	}
+
+	/***Calc*/
+	sum = check_sum(byte_array , len);
+	*result = 0;
+
+	if(flag)
+		free(byte_array);
+
+	return sum;
 }
 
 /*

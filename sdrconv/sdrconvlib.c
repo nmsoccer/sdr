@@ -593,6 +593,8 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 	int size;
 	char *pstart;
 	int ret;
+	unsigned short check_sum = 0;
+	int result = 0;
 
 	/***Arg Check*/
 	if(!penv)
@@ -653,10 +655,25 @@ int sdr_gen_bin(sdr_conv_env_t *penv)
 	ret = write(penv->out_fd , pstart , size);
 	if(ret != size)
 	{
-		printf("output % failed! when writing packed_sym_table\n" , penv->output_name);
+		printf("output %s failed! when writing packed_sym_table\n" , penv->output_name);
 		return -1;
 	}
 	free(ppacked_sym_table);
+
+	//5.计算checksum 校验和
+	check_sum = check_sum_sdr(pres , &result);
+	if(result != 0)
+	{
+		printf("output %s failed! when calc checksum! sum:%d result:%d\n" , penv->output_name , check_sum , result);
+		return -1;
+	}
+	ret = write(penv->out_fd , &check_sum , sizeof(check_sum));
+	if(ret < 0)
+	{
+		printf("output %s failed! when writing checksum result\n" , penv->output_name);
+		return -1;
+	}
+
 	return 0;
 }
 

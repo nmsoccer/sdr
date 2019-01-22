@@ -21,12 +21,12 @@ extern "C" {
 /*
  * 加载目标sdr文件入内存
  */
-sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp);
+API sdr_data_res_t *sdr_load_bin(char *file_name , FILE *log_fp);
 
 /*
  * 释放加载入内存的sdr文件
  */
-int sdr_free_bin(sdr_data_res_t *pres);
+API int sdr_free_bin(sdr_data_res_t *pres);
 
 /*
  * 打包in_buff数据到out_buff缓冲区
@@ -39,7 +39,7 @@ int sdr_free_bin(sdr_data_res_t *pres);
  * return:>=0压缩后的数据
  * else:错误
  */
-int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , char net_byte , FILE *log_fp);
+API int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , int version , char net_byte , FILE *log_fp);
 
 /*
  * 解包in_buff数据到out_buff
@@ -50,7 +50,7 @@ int sdr_pack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *typ
  * return:>=0解压缩后的数据
  * else:错误
  */
-int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , char net_byte , FILE *log_fp);
+API int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *type_name , char net_byte , FILE *log_fp);
 
 
 //扩展接口 appended on 2017-02-25
@@ -62,7 +62,7 @@ int sdr_unpack(sdr_data_res_t *pres , char *pout_buff , char *pin_buff , char *t
  * >=0:偏移量
  * -1:Failed
 */
-int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name);
+API int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name);
 
 /*
  * 获得某结构体当前成员的下一个成员名
@@ -75,7 +75,7 @@ int sdr_member_offset(sdr_data_res_t *pres , char *type_name , char *member_name
  * -1:错误
  * -2:没有下一个成员
  */
-int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member , char *next_member , int len);
+API int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member , char *next_member , int len);
 
 
 #define SDR_DUMP_SPAN "    " //four space
@@ -88,12 +88,15 @@ int sdr_next_member(sdr_data_res_t *pres , char *type_name , char *curr_member ,
  * 0 : success
  * -1:failed
  */
-int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp);
+API int sdr_dump_struct(sdr_data_res_t *pres , char *type_name , char *struct_data , FILE *fp);
 
-//supported
-int sdr_bin2xml(sdr_data_res_t *pres , char *file_name , FILE *log_fp);
-unsigned int BKDRHash(char *str);
-char *reverse_label_type(char sdr_type , char *format_buf);
+
+
+/***No API Func*/
+NO_API int sdr_bin2xml(sdr_data_res_t *pres , char *file_name , FILE *log_fp);
+NO_API unsigned int BKDRHash(char *str);
+NO_API char *reverse_label_type(char sdr_type , char *format_buf);
+NO_API unsigned short check_sum_sdr(sdr_data_res_t *pres , int *result);
 
 #ifdef __cplusplus
 }

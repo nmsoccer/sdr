@@ -6,6 +6,8 @@ CONVER_DIR="${WORK_DIR}/sdrconv/"
 HEADER_FILES="sdr.h sdr_types.h"
 TARGET_SO="libsdr.so"
 LINK_NAME="libsdr.so.1"
+TARGET_LIB="libsdr.a"
+SRC_FILE="sdr.c"
 
 #install sdrconv
 cd ${CONVER_DIR}
@@ -25,6 +27,16 @@ then
   echo "compile ${TARGET_SO} failed!"
   exit 2
 fi
+
+#compile libsdr.a
+gcc -g -c ${SRC_FILE}
+ar crsv ${TARGET_LIB} *.o
+if [[ ! -e ${TARGET_LIB} ]]
+then
+  echo "compile ${TARGET_LIB} failed!"
+  exit 3
+fi
+
 
 #install
 mkdir -p ${HEADER_DIR}
@@ -47,6 +59,14 @@ then
   exit 2
 fi
 echo "install ${TARGET_SO} to ${LIB_DIR} success!"
+
+cd ${WORK_DIR}
+cp -f ${TARGET_LIB} ${LIB_DIR}
+rm ${TARGET_LIB}
+rm *.o
+echo "install ${TARGET_LIB} to ${LIB_DIR} success!"
+
+
 
 echo "install complete!"
 cd ${WORK_DIR}

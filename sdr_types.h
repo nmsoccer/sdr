@@ -13,6 +13,9 @@ extern "C" {
 #endif
 
 /************************宏****************/
+#define API
+#define NO_API
+
 #define SDR_PRINT_DEBUG 0
 #define DEFAULT_MAX_NODE_COUNT (21841)	//默认NODE 21841数目
 
