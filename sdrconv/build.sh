@@ -10,7 +10,7 @@ then
   exit 1
 fi
 
-cp ${BIN_FILE} ${INSTALL_DIR}
+cp -f ${BIN_FILE} ${INSTALL_DIR}
 if [[ $? -ne 0 ]]
 then
   echo "install ${BIN_FILE} to ${INSTALL_DIR} failed!"
@@ -19,8 +19,9 @@ fi
 
 rm ${BIN_FILE}
 
+cd ../tools/
 chmod a+x ${TOOL_SCR}
-cp ${TOOL_SCR} ${INSTALL_DIR}
+cp -f ${TOOL_SCR} ${INSTALL_DIR}
 
 echo "install ${BIN_FILE} to ${INSTALL_DIR} success!"
 exit 0
