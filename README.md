@@ -113,9 +113,9 @@ _协议数据通过xml文件进行定义，为了解析与协议的规范性，�
 1. 下载sdr.zip到本地目录
 2. unzip解压缩 然后进入sdr目录
 3. 在sdr目录下执行./install.sh(注意需root权限)
-4. 将会在/usr/local/bin下安装sdrconv程序
+4. 将会在/usr/local/bin下安装sdrconv程序和辅助脚本conv2sdr.sh
 5. 将会在/usr/local/include/sdr/目录下存放头文件
-6. 将会在/usr/local/lib/下安装libsdr.so动态库
+6. 将会在/usr/local/lib/下安装libsdr.so动态库和静态库libsdr.a
 
 ### 工具
 sdrconv用于生成与解析*.sdr协议描述文件
@@ -128,8 +128,9 @@ sdrconv用于生成与解析*.sdr协议描述文件
 2. 在demo目录下执行conv2sdr.sh demo.xml 如果成功执行将会生成demo.h
 3. gcc -g demo.c -lsdr -o demo 生成可执行文件
 _如果找不到动态库，需要将/usr/local/lib加入/etc/ld.so.conf 然后执行/sbin/ldconfig_
-4. 或者直接将源文件编译  
-   gcc -g demo.c ../sdr.c -o demo
+4. 或者使用静态库编译或者直接将源文件编译  
+   gcc -g demo.c -Wl,-Bstatic -lsdr -Wl,-Bdynamic -o demo(静态库)  
+   gcc -g demo.c ../sdr.c -o demo(源码编译)  
 
 
 ## API
