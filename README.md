@@ -1,6 +1,8 @@
-# SDR
+# SDR  
+[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)  
 A Simple Data Representation  
-一种简单的数据表示及序列反序列化接口.本文将简单介绍sdr的特性与使用方法，同时给出使用范例，并在文末提供与protbuf简单的性能比较
+一种简单的数据表示及序列反序列化接口.本文将简单介绍sdr的特性与使用方法，同时给出使用范例，并在文末提供与protbuf简单的性能比较  
+
 
 - **数据描述** 通过XML文件描述数据结构
 - **有限规则** 支持少数几种严格限制的标签即可描述C语言所使用的结构及数据类型
