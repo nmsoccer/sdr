@@ -1,5 +1,5 @@
 # SDR  
-[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)  
+[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu) [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)    
 A Simple Data Representation  
 一种简单的数据表示及序列反序列化接口.本文将简单介绍sdr的特性与使用方法，同时给出使用范例，并在文末提供与protbuf简单的性能比较  
 
