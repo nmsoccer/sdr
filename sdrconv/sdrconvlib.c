@@ -1085,7 +1085,7 @@ int get_next_hash_size(int curr_value)
 {
 	int i = 0;
 
-	for(i=0; i<sizeof(hash_size_map); i++)
+	for(i=0; i<(sizeof(hash_size_map)/sizeof(int)); i++)
 	{
 		if(hash_size_map[i] > curr_value)
 			return hash_size_map[i];
